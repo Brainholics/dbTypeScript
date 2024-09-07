@@ -1,11 +1,11 @@
+import { Logs, User } from '@prisma/client';
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import formdata from 'form-data';
+import uuid from 'uuid';
 import { createLog, deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from '../../db/enrichminion/log';
 import userMiddleware from "../../middleware/podcast/supabaseAuth";
-import { Logs, User } from '@prisma/client';
 dotenv.config();
-import uuid from 'uuid';
 
 const app = express.Router();
 
@@ -22,7 +22,7 @@ app.post("/createLog", userMiddleware, async (req: Request, res: Response): Prom
             res.status(404).json({ message: "Log not created" });
             return;
         }
-        
+
         res.status(201).json({ message: "Log created" });
     } catch (error: any) {
         res.status(500).json({ message: error.message });

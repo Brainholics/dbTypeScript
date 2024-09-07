@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
+import { addCredits, createUser, getUser } from "../../db/podcast/user";
 import userMiddleware from "../../middleware/podcast/supabaseAuth";
-import {addCredits, createUser,getUser} from "../../db/podcast/user"
 
 const app = express.Router();
 

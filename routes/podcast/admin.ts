@@ -1,9 +1,8 @@
 import express, { Request, Response } from "express";
-import adminVerification from "../../middleware/podcast/adminAuth"
-import {adminLogin, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits} from "../../db/podcast/admin"
-import path from "path";
 import fs from "fs";
-import { deleteLog } from "../../db/enrichminion/log";
+import path from "path";
+import { adminLogin, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/podcast/admin";
+import adminVerification from "../../middleware/podcast/adminAuth";
 
 const app = express.Router();
 
@@ -93,8 +92,7 @@ app.delete("/deleteUser", adminVerification, async (req: Request, res: Response)
         if (!resp) {
             throw new Error("user not found");
         }
-
-        await deleteLog(userID);
+        
         res.status(200).json({ "resp": "user deleted" });
     } catch (error: any) {
         res.status(404).json({ "message": error.message });
@@ -161,7 +159,7 @@ app.get("/getAllApikeys", adminVerification, async (req: Request, res: Response)
     }
 });
 
-app.post("/getAPIkey",adminVerification, async (req: Request, res: Response) => {  //TESTED
+app.post("/getAPIkey", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
         const { userID } = req.body;
         const resp = await getApiKey(userID);

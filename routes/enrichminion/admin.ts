@@ -1,9 +1,9 @@
 import express, { Request, Response } from "express";
-import adminVerification from "../../middleware/podcast/adminAuth"
-import {adminLogin, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits} from "../../db/podcast/admin"
-import path from "path";
 import fs from "fs";
+import path from "path";
 import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
+import { adminLogin, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
+import adminVerification from "../../middleware/podcast/adminAuth";
 
 const app = express.Router();
 
@@ -161,7 +161,7 @@ app.get("/getAllApikeys", adminVerification, async (req: Request, res: Response)
     }
 });
 
-app.post("/getAPIkey",adminVerification, async (req: Request, res: Response) => {  //TESTED
+app.post("/getAPIkey", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
         const { userID } = req.body;
         const resp = await getApiKey(userID);

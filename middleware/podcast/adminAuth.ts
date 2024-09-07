@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { adminAuth } from "../../db/podcast/podcastadmindb/index";
+import { NextFunction, Request, Response } from "express";
+import { adminAuth } from "../../db/admindb/index";
 
 const adminVerification = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

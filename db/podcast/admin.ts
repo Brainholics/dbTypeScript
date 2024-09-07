@@ -1,8 +1,9 @@
-import { PrismaClient } from "@prisma/client";
 import { v4 as uuid } from 'uuid';
-import { adminAuth } from "./podcastadmindb/index";
+import { adminAuth } from "../admindb/index";
+import {PrismaClient as PodcastDB}
+ from "../../prisma/podcast/generated"
 
-const prisma = new PrismaClient();
+const prisma = new PodcastDB();
 
 export async function adminLogin(email: string, password: string) {
     const data = await prisma.admin.findUnique({
@@ -58,7 +59,7 @@ export async function getApiKey(userID: string) {
     });
 
     console.log(data);
-    
+
     return data?.apikey;
 }
 

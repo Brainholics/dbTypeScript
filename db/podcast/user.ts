@@ -1,6 +1,8 @@
-import { PrismaClient, User } from '@prisma/client';
+import {PrismaClient as PodcastDB, User}
+ from "../../prisma/podcast/generated"
 
-const prisma = new PrismaClient();
+const prisma = new PodcastDB();
+
 
 export async function createUser(
     fullName: string, 

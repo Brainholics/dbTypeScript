@@ -1,6 +1,7 @@
-import { Logs, PrismaClient } from '@prisma/client';
+import {PrismaClient as EnrichminionDB, Logs}
+ from "../../prisma/enrichminion/generated"
 
-const prisma = new PrismaClient();
+ const prisma = new EnrichminionDB();
 
 
 // create
