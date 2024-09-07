@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("podcast_database_url")
+  directUrl = env("podcast_direct_url")
+}
+
+
+model User {
+    UserID String @id @unique
+    name String
+    email String
+    companyName String?
+    phoneNumber String?
+    location String?
+    credits Int
+    apikey String?  @unique
+}
+
+model Admin{
+  email String @id @unique
+  password String
+}

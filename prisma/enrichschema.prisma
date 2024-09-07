@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("enrichminiondb_database_url")
+  directUrl = env("enrichminiondb_direct_url")
+}
+
+model Logs{
+  LogID String @id @unique
+  userID String
+  firstName String
+  lastName String
+  email String
+  phoneNumber String
+  currency String
+  creditsUsed Int
+  fileName String
+  Date DateTime
+  user User @relation(fields: [userID], references: [UserID])
+}
+
+model User {
+    UserID String @id @unique
+    name String
+    email String
+    companyName String?
+    phoneNumber String?
+    location String?
+    credits Int
+    apikey String?  @unique
+    logs Logs[]
+}
+
+model Admin{
+  email String @id @unique
+  password String
+}
