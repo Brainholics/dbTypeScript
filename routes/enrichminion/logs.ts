@@ -1,7 +1,6 @@
-import { Logs, User } from '@prisma/client';
+import { Logs, User } from '../../prisma/enrichminion/generated';
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
-import formdata from 'form-data';
 import uuid from 'uuid';
 import { createLog, deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from '../../db/enrichminion/log';
 import userMiddleware from "../../middleware/podcast/supabaseAuth";
