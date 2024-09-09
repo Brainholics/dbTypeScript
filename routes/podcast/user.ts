@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { addCredits, createUser, getUser } from "../../db/podcast/user";
 import userMiddleware from "../../middleware/podcast/supabaseAuth";
+import {getUserProfile, saveProfile} from "../../db/podcast/saveProfile";
 
 const app = express.Router();
 
@@ -81,8 +82,39 @@ app.get("/getCost", userMiddleware, async (req: Request, res: Response): Promise
     }
 })
 
+app.post("/saveProfile", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try{
+        const userID = (req as any).user.id;
+        const {email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency} = req.body;
 
+        const user = await saveProfile(userID,email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency);
 
+        if(!user){
+            res.status(400).json({message: "Failed to save profile"});
+            return;
+        }
+
+        res.status(200).json({message: "Profile saved successfully", user});
+
+    }catch(error: any){
+        res.status(500).json({ message: error.message });
+    }
+})
+
+app.post("/getUserSavedProfiles", userMiddleware, async(req: Request, res: Response): Promise<void> => {
+    try{
+        const userID = (req as any).user.id;
+        const profiles = await getUserProfile(userID);
+        if(!profiles){
+            res.status(404).json({message: "Profiles not found"});
+            return;
+        }
+
+        res.status(200).json({profiles});
+    }catch(error: any){
+        res.status(500).json({ message: error.message });
+    }    
+})
 
 
 export default app;

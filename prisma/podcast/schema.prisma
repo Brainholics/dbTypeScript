@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output = "./generated"
+  output   = "./generated"
 }
 
 datasource db {
@@ -9,19 +9,39 @@ datasource db {
   directUrl = env("podcast_direct_url")
 }
 
-
-model User {
-    UserID String @id @unique
-    name String
-    email String
-    companyName String?
-    phoneNumber String?
-    location String?
-    credits Int
-    apikey String?  @unique
+model SavedProfiles {
+  id                  Int       @id @default(autoincrement())
+  UserID              String 
+  email               String?
+  title               String?
+  sentiment           String?
+  authorName          String?
+  rank                Int?
+  audience            String?
+  adCost              Int?
+  host                String?
+  category            String?
+  language            String?
+  episodes            Int?
+  lastedPublished     DateTime?
+  publishingFrequency String?
+  user                User      @relation(fields: [UserID], references: [UserID])
+  createdAt           DateTime  @default(now())
 }
 
-model Admin{
-  email String @id @unique
+model User {
+  UserID        String          @id @unique
+  name          String
+  email         String
+  companyName   String?
+  phoneNumber   String?
+  location      String?
+  credits       Int
+  apikey        String?         @unique
+  SavedProfiles SavedProfiles[]
+}
+
+model Admin {
+  email    String @id @unique
   password String
 }
