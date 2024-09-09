@@ -36,7 +36,7 @@ interface ChanegEnrichPriceRequest extends Request {
 
 
 // LOGIN ROUTE
-app.post("/login", adminVerification, async (req: LoginRequest, res: Response) => {  //TESTED
+app.post("/login", async (req: LoginRequest, res: Response) => {  //TESTED
     try {
         const { email, password } = req.body;
         const resp = await adminLogin(email, password);
@@ -111,7 +111,7 @@ app.post("/changePrice", adminVerification, async (req: ChanegEnrichPriceRequest
 
         process.env.enrichminiondb_price = newPrice.toString();
 
-        const envFilePath = path.resolve(__dirname, '../.env');
+        const envFilePath = path.resolve(__dirname, '../../.env');
         if (!fs.existsSync(envFilePath)) {
             throw new Error(".env file not found");
         }

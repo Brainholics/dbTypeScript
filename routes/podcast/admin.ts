@@ -35,7 +35,7 @@ interface ChanegPodcastPriceRequest extends Request {
 
 
 // LOGIN ROUTE
-app.post("/login", adminVerification, async (req: LoginRequest, res: Response) => {  //TESTED
+app.post("/login", async (req: LoginRequest, res: Response) => {  //TESTED
     try {
         const { email, password } = req.body;
         const resp = await adminLogin(email, password);
@@ -109,13 +109,13 @@ app.post("/changePrice", adminVerification, async (req: ChanegPodcastPriceReques
 
         process.env.enrichminiondb_price = newPrice.toString();
 
-        const envFilePath = path.resolve(__dirname, '../.env');
+        const envFilePath = path.resolve(__dirname, '../../.env');
         if (!fs.existsSync(envFilePath)) {
             throw new Error(".env file not found");
         }
 
         let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-        const newEnvFileContent = envFileContent.replace(/(^|\n)enrichminiondb_price=.*/, `$1enrichminiondb_price=${newPrice}`);
+        const newEnvFileContent = envFileContent.replace(/(^|\n)podcast_price=.*/, `$1podcast_price=${newPrice}`);
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
