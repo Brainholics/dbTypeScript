@@ -3,6 +3,7 @@ import { PrismaClient as PodcastDB,SavedProfiles } from "../../prisma/podcast/ge
 const prisma = new PodcastDB();
 
 export async function saveProfile(
+    id: string,
     userID: string,
     email: string,
     title: string,
@@ -21,6 +22,7 @@ export async function saveProfile(
     try{
         const profile = await prisma.savedProfiles.create({
             data: {
+                id: id,
                 UserID: userID,
                 email: email,
                 title: title,
@@ -31,6 +33,10 @@ export async function saveProfile(
                 adCost: adCost,
                 host: host,
                 category: category,
+                language: language,
+                episodes: episodes,
+                lastedPublished: lastedPublished,
+                publishingFrequency: publishingFrequency
             },
         });
 

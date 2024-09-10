@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { adminLogin, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/podcast/admin";
+import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/podcast/admin";
 import adminVerification from "../../middleware/podcast/adminAuth";
 
 const app = express.Router();
@@ -107,7 +107,7 @@ app.post("/changePrice", adminVerification, async (req: ChanegPodcastPriceReques
             throw new Error("Invalid price");
         }
 
-        process.env.enrichminiondb_price = newPrice.toString();
+        process.env.podcast_price = newPrice.toString();
 
         const envFilePath = path.resolve(__dirname, '../../.env');
         if (!fs.existsSync(envFilePath)) {
@@ -149,6 +149,20 @@ app.post("/changeWebhook", adminVerification, async (req: ChangeWebhookRequest, 
 
 
 // APIKEY ROUTES
+
+app.post("/generateApiKey", adminVerification, async (req: Request, res: Response) => {  //TESTED   
+    try {
+        const { userID } = req.body;
+        const resp = await getApiKey(userID);
+        if (resp) {
+            throw new Error("this account already have APIKEY access");
+        }
+        const apiKey = await generateAPIkey(userID);
+        res.status(200).json({ apiKey });
+    } catch (error: any) {
+        res.status(404).json({ "message": error.message });
+    }
+})
 
 app.get("/getAllApikeys", adminVerification, async (req: Request, res: Response) => { //TESTED
     try {
@@ -200,6 +214,18 @@ app.get("/getPrice", adminVerification, async (req: Request, res: Response) => {
     }
 });
 
+app.get("/getCredits", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { userID } = req.body;
+        const user = await getUserById(userID);
+        if (!user) {
+            throw new Error("User not found");
+        }
+        res.status(200).json({ credits: user.credits });
+    } catch (error: any) {
+        res.status(400).json({ "message": error.message });
+    }
+});
 // Update credits
 app.post("/updateCredits", adminVerification, async (req: UpdateCreditsRequest, res: Response) => {  //TESTED
     try {

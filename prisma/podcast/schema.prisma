@@ -10,7 +10,7 @@ datasource db {
 }
 
 model SavedProfiles {
-  id                  Int       @id @default(autoincrement())
+  id                  String       @id @unique
   UserID              String 
   email               String?
   title               String?

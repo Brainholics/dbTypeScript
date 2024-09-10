@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
-import { adminLogin, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
+import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
 import adminVerification from "../../middleware/podcast/adminAuth";
 
 const app = express.Router();
@@ -150,7 +150,22 @@ app.post("/changeWebhook", adminVerification, async (req: ChangeWebhookRequest, 
 
 
 
+
 // APIKEY ROUTES
+
+app.post("/generateApiKey", adminVerification, async (req: Request, res: Response) => {  //TESTED   
+    try {
+        const { userID } = req.body;
+        const resp = await getApiKey(userID);
+        if (resp) {
+            throw new Error("this account already have APIKEY access");
+        }
+        const apiKey = await generateAPIkey(userID);
+        res.status(200).json({ apiKey });
+    } catch (error: any) {
+        res.status(404).json({ "message": error.message });
+    }
+})
 
 app.get("/getAllApikeys", adminVerification, async (req: Request, res: Response) => { //TESTED
     try {
@@ -190,6 +205,18 @@ app.post("/revokeAPIkey", adminVerification, async (req: Request, res: Response)
 
 // CREDITS ROUTES
 
+app.get("/getCredits", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { userID } = req.body;
+        const user = await getUserById(userID);
+        if (!user) {
+            throw new Error("User not found");
+        }
+        res.status(200).json({ credits: user.credits });
+    } catch (error: any) {
+        res.status(400).json({ "message": error.message });
+    }
+});
 
 app.get("/getPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {

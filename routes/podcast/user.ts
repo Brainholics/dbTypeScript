@@ -85,9 +85,9 @@ app.get("/getCost", userMiddleware, async (req: Request, res: Response): Promise
 app.post("/saveProfile", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try{
         const userID = (req as any).user.id;
-        const {email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency} = req.body;
+        const {id,email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency} = req.body;
 
-        const user = await saveProfile(userID,email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency);
+        const user = await saveProfile(id,userID,email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency);
 
         if(!user){
             res.status(400).json({message: "Failed to save profile"});
