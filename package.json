@@ -5,8 +5,10 @@
   "main": "server.ts",
   "scripts": {
     "dev": "nodemon --exec ts-node ./server.ts",
-    "postinstall": "npx prisma generate --schema ./prisma/schema.prisma",
-    "migrate": "npx prisma migrate dev --name init"
+    "postinstall-podcast": "npx prisma generate --schema ./prisma/podcast/schema.prisma",
+    "postinstall-enrichminion": "npx prisma generate --schema ./prisma/enrichminion/schema.prisma",
+    "migrate-podcast": "npx prisma migrate dev --name init --schema ./prisma/podcast/schema.prisma",
+    "migrate-enrichminion": "npx prisma migrate dev --name init --schema ./prisma/enrichminion/schema.prisma"
   },
   "keywords": [],
   "author": "",

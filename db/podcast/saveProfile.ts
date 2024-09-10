@@ -91,3 +91,18 @@ export async function deleteAllProfiles(): Promise<boolean | null>{
         throw new Error(error.message);
     }
 }
+
+export async function checkSavedProfile(id: string, userID: string): Promise<SavedProfiles | null>{
+    try{
+        const profile = await prisma.savedProfiles.findUnique({
+            where: {
+                id:id,
+                UserID: userID
+            }
+        });
+
+        return profile;
+    }catch(error: any){
+        throw new Error(error.message);
+    }
+}
