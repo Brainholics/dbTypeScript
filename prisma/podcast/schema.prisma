@@ -14,17 +14,17 @@ model SavedProfiles {
   UserID              String 
   email               String?
   title               String?
-  sentiment           String?
+  sentiment           Int?
   authorName          String?
   rank                Int?
-  audience            String?
+  audience            Int?
   adCost              Int?
   host                String?
   category            String?
   language            String?
   episodes            Int?
-  lastedPublished     DateTime?
-  publishingFrequency String?
+  lastedPublished     String?
+  publishingFrequency String? 
   user                User      @relation(fields: [UserID], references: [UserID])
   createdAt           DateTime  @default(now())
 }
