@@ -69,7 +69,7 @@ export async function getAllProfiles(): Promise<SavedProfiles[] | null>{
     }
 }
 
-export async function deleteProfile(Id: number): Promise<SavedProfiles | null>{
+export async function deleteProfile(Id: string): Promise<SavedProfiles | null>{
     try{
         const profile = await prisma.savedProfiles.delete({
             where: {
