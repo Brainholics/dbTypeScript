@@ -101,7 +101,7 @@ app.post("/saveProfile", userMiddleware, async (req: Request, res: Response): Pr
     }
 })
 
-app.post("/getUserSavedProfiles", userMiddleware, async(req: Request, res: Response): Promise<void> => {
+app.get("/getUserSavedProfiles", userMiddleware, async(req: Request, res: Response): Promise<void> => {
     try{
         const userID = (req as any).user.id;
         const profiles = await getUserProfile(userID);
@@ -116,7 +116,7 @@ app.post("/getUserSavedProfiles", userMiddleware, async(req: Request, res: Respo
     }    
 })
 
-app.get("/checkSavedProfile", userMiddleware, async(req: Request, res: Response): Promise<void> => {
+app.post("/checkSavedProfile", userMiddleware, async(req: Request, res: Response): Promise<void> => {
     try{
         const userID = (req as any).user.id;
         const {id} = req.body;
