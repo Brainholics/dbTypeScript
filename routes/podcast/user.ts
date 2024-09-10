@@ -116,7 +116,7 @@ app.post("/getUserSavedProfiles", userMiddleware, async(req: Request, res: Respo
     }    
 })
 
-app.post("/checkSavedProfile", userMiddleware, async(req: Request, res: Response): Promise<void> => {
+app.get("/checkSavedProfile", userMiddleware, async(req: Request, res: Response): Promise<void> => {
     try{
         const userID = (req as any).user.id;
         const {id} = req.body;
