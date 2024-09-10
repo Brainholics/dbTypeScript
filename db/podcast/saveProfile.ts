@@ -7,16 +7,16 @@ export async function saveProfile(
     userID: string,
     email: string,
     title: string,
-    sentiment: string,
+    sentiment: number,
     authorName: string,
     rank: number,
-    audience: string,
+    audience: number,
     adCost: number,
     host: string,
     category: string,
     language: string,
     episodes: number,
-    lastedPublished: Date,
+    lastedPublished: string,
     publishingFrequency: string
 ): Promise<SavedProfiles | null>{
     try{
