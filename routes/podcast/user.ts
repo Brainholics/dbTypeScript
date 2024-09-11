@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
+import { checkSavedProfile, getUserProfile, saveProfile } from "../../db/podcast/saveProfile";
 import { addCredits, createUser, getUser, removeCredits } from "../../db/podcast/user";
 import userMiddleware from "../../middleware/podcast/supabaseAuth";
-import {checkSavedProfile, getUserProfile, saveProfile} from "../../db/podcast/saveProfile";
 
 const app = express.Router();
 
@@ -102,6 +102,15 @@ app.get("/getCredits", userMiddleware, async (req: Request, res: Response): Prom
     }
 });
 
+app.get("/getAccessCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const accessPrice = parseInt(process.env.podcast_per_access_cost as string);
+        res.status(200).json({ accessPrice });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 app.get("/getCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
         const podcastPrice = parseInt(process.env.podcast_price as string);
@@ -112,51 +121,51 @@ app.get("/getCost", userMiddleware, async (req: Request, res: Response): Promise
 })
 
 app.post("/saveProfile", userMiddleware, async (req: Request, res: Response): Promise<void> => {
-    try{
+    try {
         const userID = (req as any).user.id;
-        const {id,email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency} = req.body;
+        const { id, email, title, sentiment, authorName, rank, audience, adCost, host, category, language, episodes, lastedPublished, publishingFrequency } = req.body;
 
-        const user = await saveProfile(id,userID,email,title,sentiment,authorName,rank,audience,adCost,host,category,language,episodes,lastedPublished,publishingFrequency);
+        const user = await saveProfile(id, userID, email, title, sentiment, authorName, rank, audience, adCost, host, category, language, episodes, lastedPublished, publishingFrequency);
 
-        if(!user){
-            res.status(400).json({message: "Failed to save profile"});
+        if (!user) {
+            res.status(400).json({ message: "Failed to save profile" });
             return;
         }
 
-        res.status(200).json({message: "Profile saved successfully", user});
+        res.status(200).json({ message: "Profile saved successfully", user });
 
-    }catch(error: any){
+    } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 })
 
-app.get("/getUserSavedProfiles", userMiddleware, async(req: Request, res: Response): Promise<void> => {
-    try{
+app.get("/getUserSavedProfiles", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
         const userID = (req as any).user.id;
         const profiles = await getUserProfile(userID);
-        if(!profiles){
-            res.status(404).json({message: "Profiles not found"});
+        if (!profiles) {
+            res.status(404).json({ message: "Profiles not found" });
             return;
         }
 
-        res.status(200).json({profiles});
-    }catch(error: any){
+        res.status(200).json({ profiles });
+    } catch (error: any) {
         res.status(500).json({ message: error.message });
-    }    
+    }
 })
 
-app.post("/checkSavedProfile", userMiddleware, async(req: Request, res: Response): Promise<void> => {
-    try{
+app.post("/checkSavedProfile", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
         const userID = (req as any).user.id;
-        const {id} = req.body;
-        const profiles = await checkSavedProfile(id,userID);
-        if(!profiles){
-            res.status(404).json({message: "Profiles not found"});
+        const { id } = req.body;
+        const profiles = await checkSavedProfile(id, userID);
+        if (!profiles) {
+            res.status(404).json({ message: "Profiles not found" });
             return;
         }
 
-        res.status(200).json({profiles});
-    }catch(error: any){
+        res.status(200).json({ profiles });
+    } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 

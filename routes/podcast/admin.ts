@@ -124,6 +124,30 @@ app.post("/changePrice", adminVerification, async (req: ChanegPodcastPriceReques
     }
 });
 
+app.post("/changeCostperAccess", adminVerification, async (req: ChanegPodcastPriceRequest, res: Response) => {  //TESTED
+    try {
+        const { newPrice } = req.body;
+        if (isNaN(newPrice) || !newPrice) {
+            throw new Error("Invalid price");
+        }
+
+        process.env.podcast_per_access_cost = newPrice.toString();
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)podcast_per_access_cost=.*/, `$1podcast_per_access_cost=${newPrice}`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    } catch (error: any) {
+        res.status(400).json({ "error": error.message });
+    }
+});
+
 app.post("/changeWebhook", adminVerification, async (req: ChangeWebhookRequest, res: Response) => {  //TESTED
     try {
         const { webhook } = req.body;
