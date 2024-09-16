@@ -72,10 +72,19 @@ app.get("/getCredits", userMiddleware, async (req: Request, res: Response): Prom
     }
 });
 
-app.get("/getCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+app.get("/getCost", async (req: Request, res: Response): Promise<void> => {
     try {
-        const podcastPrice = parseInt(process.env.podcast_price as string);
-        res.status(200).json({ podcastPrice });
+        const enrichminiondbPrice = parseInt(process.env.enrichminiondb_price as string);
+        res.status(200).json({ enrichminiondbPrice });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+})
+
+app.get("/getCostWithAuth", userMiddleware,async (req: Request, res: Response): Promise<void> => {
+    try {
+        const enrichminiondbPrice = parseInt(process.env.enrichminiondb_price as string);
+        res.status(200).json({ enrichminiondbPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
