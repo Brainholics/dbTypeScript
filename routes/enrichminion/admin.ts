@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
 import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
-import adminVerification from "../../middleware/podcast/adminAuth";
+import adminVerification from "../../middleware/enrichminion/adminAuth";
 
 const app = express.Router();
 
@@ -220,10 +220,10 @@ app.get("/getCredits", adminVerification, async (req: Request, res: Response) =>
 
 app.get("/getPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
-        if (!process.env.podcast_price) {
+        if (!process.env.enrichminiondb_price) {
             throw new Error("no price set");
         }
-        res.status(200).json({ "resp": process.env.podcast_price });
+        res.status(200).json({ "resp": process.env.enrichminiondb_price });
     } catch (error: any) {
         res.status(404).json({ "error": error.message });
     }

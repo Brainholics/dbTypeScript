@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { adminAuth } from "../../db/enrichminion/enrichminionadmindb/index";
+import { adminAuth } from "../../db/admindb/index";
+// import { adminAuth } from "../../db/enrichminion/enrichminionadmindb/index";
 
 const adminVerification = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
