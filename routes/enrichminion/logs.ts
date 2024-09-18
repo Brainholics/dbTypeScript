@@ -1,9 +1,8 @@
-import { Logs, User } from '../../prisma/enrichminion/generated';
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import uuid from 'uuid';
 import { createLog, deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from '../../db/enrichminion/log';
-import userMiddleware from "../../middleware/podcast/supabaseAuth";
+import userMiddleware from "../../middleware/enrichminion/supabaseAuth";
 dotenv.config();
 
 const app = express.Router();
