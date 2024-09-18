@@ -27,7 +27,7 @@ interface ChangeWebhookRequest extends Request {
     };
 }
 
-interface ChanegEnrichPriceRequest extends Request {
+interface ChangeEnrichPriceRequest extends Request {
     body: {
         newPrice: number;
     };
@@ -102,7 +102,7 @@ app.delete("/deleteUser", adminVerification, async (req: Request, res: Response)
 });
 
 // CHANGE PRICINGS ROUTE
-app.post("/changePrice", adminVerification, async (req: ChanegEnrichPriceRequest, res: Response) => {  //TESTED
+app.post("/changePrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
     try {
         const { newPrice } = req.body;
         if (isNaN(newPrice) || !newPrice) {
@@ -148,6 +148,29 @@ app.post("/changeWebhook", adminVerification, async (req: ChangeWebhookRequest, 
     }
 });
 
+app.post("/changeCostperAccess", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
+    try {
+        const { newPrice } = req.body;
+        if (isNaN(newPrice) || !newPrice) {
+            throw new Error("Invalid price");
+        }
+
+        process.env.enrichminiondb_per_row_cost = newPrice.toString();
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)enrichminiondb_per_row_cost=.*/, `$1enrichminiondb_per_row_cost=${newPrice}`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    } catch (error: any) {
+        res.status(400).json({ "error": error.message });
+    }
+});
 
 
 
@@ -188,6 +211,18 @@ app.post("/getAPIkey", adminVerification, async (req: Request, res: Response) =>
         res.status(404).json({ "message": error.message });
     }
 });
+
+app.get("/getAccessCost", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.enrichminiondb_per_row_cost) {
+            throw new Error("no price set");
+        }
+        res.status(200).json({ "resp": process.env.enrichminiondb_per_row_cost});
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
 
 app.post("/revokeAPIkey", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
