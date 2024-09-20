@@ -262,10 +262,13 @@ export async function Test(req: Request, res: Response): Promise<{ success: bool
     const uploadPath = './data/';
     const filename = 'req.csv';
     const filepath = path.join(uploadPath, filename);
+    const wantedFields = req.body.wantedFields as string;
+    console.log(wantedFields);
 
     try {
         // Save the uploaded file
         const file = req.file;
+        console.log(filepath);
         if (!file) {
             throw new Error('No file uploaded');
         }
@@ -323,7 +326,7 @@ export async function Test(req: Request, res: Response): Promise<{ success: bool
             });
         });
 
-        const wantedFields = req.body.wantedFields as string;
+        
         const wantedFieldsArr: Record<string, boolean> = {
             "First Name": false,
             "Last Name": false,
