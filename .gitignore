@@ -4,3 +4,4 @@ node_modules
 .vscode/*
 prisma/enrichminion/generated/*
 prisma/podcast/generated/*
+data
