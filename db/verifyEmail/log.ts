@@ -1,7 +1,8 @@
-import { Logs, PrismaClient } from '@prisma/client';
-import {BreakPoint} from '../types/interfaces';
+import {PrismaClient as EnrichminionDB, EmailVerificationLogs as Logs}
+ from "../../prisma/enrichminion/generated"
+import {BreakPoint} from '../../types/interfaces';
 
-const prisma = new PrismaClient();
+const prisma = new EnrichminionDB();
 
 // create
 export async function createLog(
@@ -12,7 +13,7 @@ export async function createLog(
     emails:number,
 ): Promise<Logs | null> {
     try {
-        const log = await prisma.logs.create({
+        const log = await prisma.emailVerificationLogs.create({
             data:{
                 LogID: logID,
                 userID: userID,
@@ -34,7 +35,7 @@ export async function createLog(
 
 export async function getAllLogsByUserID(userID :string): Promise<Logs[]> {
     try {
-        const logs = await prisma.logs.findMany({
+        const logs = await prisma.emailVerificationLogs.findMany({
             where: {
                 userID: userID
             }
@@ -48,7 +49,7 @@ export async function getAllLogsByUserID(userID :string): Promise<Logs[]> {
 
 export async function getAllLogs(): Promise<Logs[]> {
     try {
-        const logs = await prisma.logs.findMany();
+        const logs = await prisma.emailVerificationLogs.findMany();
         if (!logs) {
             return [];
         }
@@ -62,7 +63,7 @@ export async function getAllLogs(): Promise<Logs[]> {
 
 export async function getOneLog(logID: string): Promise<Logs | null> {
     try {
-        const log = await prisma.logs.findUnique({
+        const log = await prisma.emailVerificationLogs.findUnique({
             where: {
                 LogID: logID
             }
@@ -82,7 +83,7 @@ export async function updateLog(
     breakPoint: BreakPoint
 ): Promise<Logs | null> {
     try {
-        const existingLog = await prisma.logs.findUnique({
+        const existingLog = await prisma.emailVerificationLogs.findUnique({
             where: {
                 LogID: logID
             }
@@ -92,7 +93,7 @@ export async function updateLog(
             return null;
         }
 
-        const log = await prisma.logs.update({
+        const log = await prisma.emailVerificationLogs.update({
             where: {
                 LogID: logID
             },

@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../../prisma/enrichminion/generated";
 import { v4 as uuid } from 'uuid';
-import { adminAuth } from "./admindb";
+import { adminAuth } from "../admindb/index";
 
 const prisma = new PrismaClient();
 
@@ -108,7 +108,7 @@ export async function getUserById(userID: string) {
 }
 
 export async function getLogsByUserID(userID: string) {
-    const data = await prisma.logs.findMany({
+    const data = await prisma.emailVerificationLogs.findMany({
         where: {
             userID: userID
         }

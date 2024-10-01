@@ -1,4 +1,4 @@
-import {PrismaClient as EnrichminionDB, Logs}
+import {PrismaClient as EnrichminionDB, EnrichmentLogs as Logs}
  from "../../prisma/enrichminion/generated"
 
  const prisma = new EnrichminionDB();
@@ -17,7 +17,7 @@ export async function createLog(
     fileName: string,
 ): Promise<Logs | null> {
     try {
-        const log = await prisma.logs.create({
+        const log = await prisma.enrichmentLogs.create({
             data:{
                 LogID: logID,
                 userID: userID,
@@ -42,7 +42,7 @@ export async function createLog(
 
 export async function getAllLogsByUserID(userID :string): Promise<Logs[]> {
     try {
-        const logs = await prisma.logs.findMany({
+        const logs = await prisma.enrichmentLogs.findMany({
             where: {
                 userID: userID
             }
@@ -56,7 +56,7 @@ export async function getAllLogsByUserID(userID :string): Promise<Logs[]> {
 
 export async function getAllLogs(): Promise<Logs[]> {
     try {
-        const logs = await prisma.logs.findMany();
+        const logs = await prisma.enrichmentLogs.findMany();
         if (!logs) {
             return [];
         }
@@ -70,7 +70,7 @@ export async function getAllLogs(): Promise<Logs[]> {
 
 export async function getOneLog(logID: string): Promise<Logs | null> {
     try {
-        const log = await prisma.logs.findUnique({
+        const log = await prisma.enrichmentLogs.findUnique({
             where: {
                 LogID: logID
             }
@@ -84,7 +84,7 @@ export async function getOneLog(logID: string): Promise<Logs | null> {
 
 export async function deleteLog(logID: string): Promise<Logs | null> {
     try {
-        const log = await prisma.logs.delete({
+        const log = await prisma.enrichmentLogs.delete({
             where: {
                 LogID: logID
             }
