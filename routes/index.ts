@@ -6,7 +6,10 @@ import enrichminionAPIRoutes from './enrichminion/apikey';
 import podcastUserRoutes from './podcast/user';
 import podcastAdminRoutes from './podcast/admin';
 import podcastAPIRoutes from './podcast/apikey';
-import maindbRoutes from './maindb/enrichminion/index';
+import verifyEmailServiceRoutes from "./verifyEmail/service";
+import verifyEmailAdminRoutes from "./verifyEmail/admin";
+import verifyEmailLogRoutes from "./verifyEmail/logs";
+import verifyEmailAPIRoutes from "./verifyEmail/apikey";
 
 
 const app = express.Router();
@@ -26,7 +29,12 @@ app.use('/podcast/v1', podcastAPIRoutes);
 
 
 // maindb routes
-app.use('/maindb', maindbRoutes);
+// app.use('/maindb', maindbRoutes);
+
+app.use("/verifyEmail/service", verifyEmailServiceRoutes);
+app.use("/verifyEmail/admin", verifyEmailAdminRoutes);
+app.use("/verifyEmail/logs", verifyEmailLogRoutes);
+app.use("/verifyEmail/v1", verifyEmailAPIRoutes);
 
 
 

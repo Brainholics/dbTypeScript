@@ -9,7 +9,27 @@ datasource db {
   directUrl = env("enrichminiondb_direct_url")
 }
 
-model Logs{
+model BreakPoint {
+  LogID        String @unique
+  ApiCode      Int
+  Emails       String[]
+  log          EmailVerificationLogs @relation(fields: [LogID], references: [LogID])
+}
+
+model EmailVerificationLogs {
+  LogID      String  @id @unique
+  userID     String
+  fileName   String
+  emails     Int
+  creditsUsed Int
+  status     String
+  date       DateTime
+  user       User    @relation(fields: [userID], references: [UserID])
+  breakPoint BreakPoint?
+}
+
+
+model EnrichmentLogs{
   LogID String @id @unique
   userID String
   firstName String
@@ -32,7 +52,8 @@ model User {
     location String?
     credits Int
     apikey String?  @unique
-    logs Logs[]
+    enrichmeantLogs EnrichmentLogs[]
+    emailVerificationLogs EmailVerificationLogs[]
 }
 
 model Admin{
