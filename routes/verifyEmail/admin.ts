@@ -1,6 +1,4 @@
 import express, { Request, Response } from "express";
-import fs from 'fs';
-import path from 'path';
 import adminVerification from "../../middleware/enrichminion/adminAuth";
 import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getLogsByUserID, getUserById, revokeAPIkey, updateCredits } from "../../db/verifyEmail/admin";
 import { getAllLogs } from "../../db/verifyEmail/log";
