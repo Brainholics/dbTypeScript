@@ -1,6 +1,7 @@
 import {PrismaClient as EnrichminionDB, EmailVerificationLogs as Logs}
  from "../../prisma/enrichminion/generated"
 import {BreakPoint} from '../../types/interfaces';
+import { v4 as uuid } from 'uuid';
 
 const prisma = new EnrichminionDB();
 
@@ -116,3 +117,47 @@ export async function updateLog(
 
 
 //logs getall getone update  admin login change pricing gen api , 
+
+
+
+// apikey
+
+export async function generateAPIkey(userID: string) {
+    const key = uuid() as string;
+
+    const data = await prisma.user.update({
+        where: {
+            UserID: userID
+        },
+        data: {
+            apikey: key
+        }
+    });
+
+    return data;
+}
+
+export async function getApiKey(userID: string) {
+    const data = await prisma.user.findUnique({
+        where: {
+            UserID: userID
+        }
+    });
+
+    console.log(data);
+    
+    return data?.apikey;
+}
+
+export async function revokeAPIkey(userID: string) {
+    const data = await prisma.user.update({
+        where: {
+            UserID: userID
+        },
+        data: {
+            apikey: null
+        }
+    });
+
+    return data;
+}

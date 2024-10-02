@@ -8,6 +8,8 @@ import s3 from "../../db/verifyEmail/s3";
 import { removeCredits } from "../../db/enrichminion/user";
 import verifySessionToken from '../../middleware/enrichminion/supabaseAuth';
 import { BreakPoint, Email, SECONDAPIResponse, SMTPResponse, SMTPStatus } from '../../types/interfaces';
+import { generateAPIkey, getApiKey, revokeAPIkey } from "../../db/verifyEmail/log";
+
 dotenv.config();
 
 
@@ -346,5 +348,45 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
         res.status(500).json({ message: error.message });
     }
 })
+
+app.post("/generateAPIkey", verifySessionToken, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { userID } = req.body;
+        const resp = await generateAPIkey(userID);
+        if (!resp) {
+            throw new Error("failed to generate key");
+        }
+        res.status(200).json({ resp });
+    } catch (error: any) {
+        res.status(404).json({ "message": error.message });
+    }
+});
+
+app.post("/getAPIkey", verifySessionToken, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { userID } = req.body;
+        const resp = await getApiKey(userID);
+        if (!resp) {
+            throw new Error("this account do not have APIKEY access");
+        }
+        res.status(200).json({ resp });
+    } catch (error: any) {
+        res.status(404).json({ "message": error.message });
+    }
+});
+
+app.post("/revokeAPIkey", verifySessionToken, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { userID } = req.body;
+        const resp = await revokeAPIkey(userID);
+        if (!resp) {
+            throw new Error("failed to revoke key");
+        }
+        res.status(200).json({ resp });
+    } catch (error: any) {
+        res.status(404).json({ "message": error.message });
+    }
+});
+
 
 export default app;
