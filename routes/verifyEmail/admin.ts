@@ -35,43 +35,6 @@ app.post("/login", async (req: LoginRequest, res: Response) => {  //TESTED
     }
 });
 
-// // Get price
-// app.get("/getPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
-//     try {
-//         if (!process.env.COSTPEREMAIL) {
-//             throw new Error("no price set");
-//         }
-//         res.status(200).json({ "resp": process.env.COSTPEREMAIL });
-//     } catch (error: any) {
-//         res.status(404).json({ "error": error.message });
-//     }
-// });
-
-// // Change price
-// app.post("/changePrice", adminVerification, async (req: ChangePriceRequest, res: Response) => {  //TESTED
-//     try {
-//         const { newPrice } = req.body;
-//         if (isNaN(newPrice) || !newPrice) {
-//             throw new Error("Invalid price");
-//         }
-
-//         process.env.COSTPEREMAIL = newPrice.toString();
-
-//         const envFilePath = path.resolve(__dirname, '../.env');
-//         if (!fs.existsSync(envFilePath)) {
-//             throw new Error(".env file not found");
-//         }
-
-//         let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-//         const newEnvFileContent = envFileContent.replace(/(^|\n)COSTPEREMAIL=.*/, `$1COSTPEREMAIL=${newPrice}`);
-//         fs.writeFileSync(envFilePath, newEnvFileContent);
-
-//         res.status(200).json({ "resp": "updated price" });
-//     } catch (error: any) {
-//         res.status(400).json({ "error": error.message });
-//     }
-// });
-
 // Get all users
 app.get("/getAllUsers", adminVerification, async (req: Request, res: Response) => { //TESTED
     try {
