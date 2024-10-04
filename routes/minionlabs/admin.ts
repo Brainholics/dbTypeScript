@@ -5,9 +5,9 @@ import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/e
 import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
 import adminVerification from "../../middleware/enrichminion/adminAuth";
 
-import {updateCredits as verifyEmailUpdateCreds, getLogsByUserID as verifyEmailUserLogs} from "../../db/verifyEmail/admin";
+import { getLogsByUserID as verifyEmailUserLogs} from "../../db/verifyEmail/admin";
 
-import { getAllLogs as verifyEmailAllLogs } from "../../db/verifyEmail/log";
+import { getAllLogs as verifyEmailAllLogs , getOneLog as verifyEmailLog} from "../../db/verifyEmail/log";
 const app = express.Router();
 
 interface LoginRequest extends Request {
@@ -53,16 +53,9 @@ app.post("/login", async (req: LoginRequest, res: Response) => {  //TESTED
 });
 
 
-
-
-
 // USERS ROUTES
 
-
-
 // get users
-
-// Get user by ID
 app.get("/getUser", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
         const { userID } = req.body;
@@ -88,7 +81,6 @@ app.get("/getAllUsers", adminVerification, async (req: Request, res: Response) =
 });
 
 // delete user
-
 app.delete("/deleteUser", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
         const { userID } = req.body;
@@ -104,31 +96,7 @@ app.delete("/deleteUser", adminVerification, async (req: Request, res: Response)
     }
 });
 
-// CHANGE PRICINGS ROUTE
-app.post("/changeEnrichMinionPrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
-    try {
-        const { newPrice } = req.body;
-        if (isNaN(newPrice) || !newPrice) {
-            throw new Error("Invalid price");
-        }
-
-        process.env.enrichminiondb_price = newPrice.toString();
-
-        const envFilePath = path.resolve(__dirname, '../../.env');
-        if (!fs.existsSync(envFilePath)) {
-            throw new Error(".env file not found");
-        }
-
-        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-        const newEnvFileContent = envFileContent.replace(/(^|\n)enrichminiondb_price=.*/, `$1enrichminiondb_price=${newPrice}`);
-        fs.writeFileSync(envFilePath, newEnvFileContent);
-
-        res.status(200).json({ "resp": "updated price" });
-    } catch (error: any) {
-        res.status(400).json({ "error": error.message });
-    }
-});
-
+//change webhook
 app.post("/changeWebhook", adminVerification, async (req: ChangeWebhookRequest, res: Response) => {  //TESTED
     try {
         const { webhook } = req.body;
@@ -148,30 +116,6 @@ app.post("/changeWebhook", adminVerification, async (req: ChangeWebhookRequest, 
         res.status(200).json({ "message": "webhook changed" });
     } catch (error: any) {
         res.status(404).json({ "message": error.message });
-    }
-});
-
-app.post("/changeEnrichMinionCostperAccess", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
-    try {
-        const { newPrice } = req.body;
-        if (isNaN(newPrice) || !newPrice) {
-            throw new Error("Invalid price");
-        }
-
-        process.env.enrichminiondb_per_row_cost = newPrice.toString();
-
-        const envFilePath = path.resolve(__dirname, '../../.env');
-        if (!fs.existsSync(envFilePath)) {
-            throw new Error(".env file not found");
-        }
-
-        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-        const newEnvFileContent = envFileContent.replace(/(^|\n)enrichminiondb_per_row_cost=.*/, `$1enrichminiondb_per_row_cost=${newPrice}`);
-        fs.writeFileSync(envFilePath, newEnvFileContent);
-
-        res.status(200).json({ "resp": "updated price" });
-    } catch (error: any) {
-        res.status(400).json({ "error": error.message });
     }
 });
 
@@ -215,18 +159,6 @@ app.post("/getAPIkey", adminVerification, async (req: Request, res: Response) =>
     }
 });
 
-app.get("/getEnrichMinionAccessCost", adminVerification, async (req: Request, res: Response) => {  //TESTED
-    try {
-        if (!process.env.enrichminiondb_per_row_cost) {
-            throw new Error("no price set");
-        }
-        res.status(200).json({ "resp": process.env.enrichminiondb_per_row_cost});
-    } catch (error: any) {
-        res.status(404).json({ "error": error.message });
-    }
-});
-
-
 app.post("/revokeAPIkey", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
         const { userID } = req.body;
@@ -243,7 +175,7 @@ app.post("/revokeAPIkey", adminVerification, async (req: Request, res: Response)
 
 // CREDITS ROUTES
 
-app.get("/getEnrichMinionCredits", adminVerification, async (req: Request, res: Response) => {  //TESTED
+app.get("/getUserCredits", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
         const { userID } = req.body;
         const user = await getUserById(userID);
@@ -256,19 +188,8 @@ app.get("/getEnrichMinionCredits", adminVerification, async (req: Request, res: 
     }
 });
 
-app.get("/getEnrichMinionPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
-    try {
-        if (!process.env.enrichminiondb_price) {
-            throw new Error("no price set");
-        }
-        res.status(200).json({ "resp": process.env.enrichminiondb_price });
-    } catch (error: any) {
-        res.status(404).json({ "error": error.message });
-    }
-});
-
 // Update credits
-app.post("/updateEnrichMinionCredits", adminVerification, async (req: UpdateCreditsRequest, res: Response) => {  //TESTED
+app.post("/updateCredits", adminVerification, async (req: UpdateCreditsRequest, res: Response) => {  //TESTED
     try {
         const { userID, credits } = req.body;
         const resp = await updateCredits(userID, credits);
@@ -287,9 +208,8 @@ app.post("/updateEnrichMinionCredits", adminVerification, async (req: UpdateCred
 
 // Logs
 
-// get logs
-
-app.post("/getOneEnrichMinionLog", adminVerification, async (req: Request, res: Response): Promise<void> => {
+// enrich logs
+app.post("/getOneEnrichLog", adminVerification, async (req: Request, res: Response): Promise<void> => {
     try {
         const { logID } = req.body;
         const log = await getOneLog(logID);
@@ -307,7 +227,7 @@ app.post("/getOneEnrichMinionLog", adminVerification, async (req: Request, res: 
 
 // get all logs
 
-app.get("/getAllEnrichMinionLogs", adminVerification, async (req: Request, res: Response): Promise<void> => {
+app.get("/getAllEnrichLogs", adminVerification, async (req: Request, res: Response): Promise<void> => {
     try {
         const logs = await getAllLogs();
 
@@ -325,8 +245,7 @@ app.get("/getAllEnrichMinionLogs", adminVerification, async (req: Request, res: 
 
 // get user logs
 
-
-app.get("/getEnrichMinionUserLogs", adminVerification, async (req: Request, res: Response): Promise<void> => {
+app.get("/getEnrichLogsByID", adminVerification, async (req: Request, res: Response): Promise<void> => {
     try {
         const userID = (req as any).user.id;
         const logs = await getAllLogsByUserID(userID);
@@ -344,9 +263,7 @@ app.get("/getEnrichMinionUserLogs", adminVerification, async (req: Request, res:
 
 
 //delete logs
-
-
-app.delete("/deleteEnrichMinionLog", adminVerification, async (req: Request, res: Response): Promise<void> => {
+app.delete("/deleteEnrichLog", adminVerification, async (req: Request, res: Response): Promise<void> => {
     try {
         const { logID } = req.body;
         const log = await getOneLog(logID);
@@ -364,17 +281,17 @@ app.delete("/deleteEnrichMinionLog", adminVerification, async (req: Request, res
     }
 })
 
-app.post("/updateVerifyEmailCredits", adminVerification, async (req: UpdateCreditsRequest, res: Response) => {  //TESTED
+
+// verify email logs
+
+app.post("/getOneVerifyEmailLog", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
-        const { userID, credits } = req.body;
-        const resp = await verifyEmailUpdateCreds(userID, credits);
-        if (resp === "negative") {
-            throw new Error("credits cannot be negative");
+        const { logID } = req.body;
+        const data = await verifyEmailLog(logID);
+        if (!data) {
+            throw new Error("failed to find log");
         }
-        if (!resp) {
-            throw new Error("failed to update credits");
-        }
-        res.status(200).json({ resp });
+        res.status(200).json({ data });
     } catch (error: any) {
         res.status(400).json({ "message": error.message });
     }
@@ -406,6 +323,8 @@ app.get("/getAllVerifyEmailLogs", adminVerification, async (req: Request, res: R
     }
 });
 
+//change prices
+
 app.post("changeVerifyEmailPrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
     try {
         const { newPrice } = req.body;
@@ -413,7 +332,7 @@ app.post("changeVerifyEmailPrice", adminVerification, async (req: ChangeEnrichPr
             throw new Error("Invalid price");
         }
 
-        process.env.COSTPEREMAIIL = newPrice.toString();
+        process.env.VerifyCost = newPrice.toString();
 
         const envFilePath = path.resolve(__dirname, '../../.env');
         if (!fs.existsSync(envFilePath)) {
@@ -421,7 +340,7 @@ app.post("changeVerifyEmailPrice", adminVerification, async (req: ChangeEnrichPr
         }
 
         let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-        const newEnvFileContent = envFileContent.replace(/(^|\n)COSTPEREMAIIL=.*/, `$1COSTPEREMAIIL=${newPrice}`);
+        const newEnvFileContent = envFileContent.replace(/(^|\n)VerifyCost=.*/, `$1VerifyCost=${newPrice}`);
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
@@ -430,5 +349,87 @@ app.post("changeVerifyEmailPrice", adminVerification, async (req: ChangeEnrichPr
     }
 });
 
+app.post("/changeEnrichPrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
+    try {
+        const { newPrice } = req.body;
+        if (isNaN(newPrice) || !newPrice) {
+            throw new Error("Invalid price");
+        }
+
+        process.env.EnrichCost = newPrice.toString();
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)EnrichCost=.*/, `$1EnrichCost=${newPrice}`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    } catch (error: any) {
+        res.status(400).json({ "error": error.message });
+    }
+});
+
+app.post("/changeCreditPrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
+    try {
+        const { newPrice } = req.body;
+        if (isNaN(newPrice) || !newPrice) {
+            throw new Error("Invalid price");
+        }
+
+        process.env.CreditPrice = newPrice.toString();
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)CreditPrice=.*/, `$CreditPrice=${newPrice}`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    } catch (error: any) {
+        res.status(400).json({ "error": error.message });
+    }
+});
+
+//get prices
+
+app.get("/getEnrichPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.EnrichCost) {
+            throw new Error("no price set");
+        }
+        res.status(200).json({ "resp": process.env.EnrichCost });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
+app.get("/getCreditCost", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.CreditPrice) {
+            throw new Error("no price set");
+        }
+        res.status(200).json({ "resp": process.env.CreditPrice});
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
+app.get("/getVerifyEmailCost", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.VerifyCost) {
+            throw new Error("no price set");
+        }
+        res.status(200).json({ "resp": process.env.VerifyCost });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
 
 export default app;
