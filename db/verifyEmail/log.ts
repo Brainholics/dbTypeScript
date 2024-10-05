@@ -101,9 +101,15 @@ export async function updateLog(
             data: {
                 status: status,
                 breakPoint: {
-                    update: {
-                        ApiCode: breakPoint.apicode,
-                        Emails: breakPoint.emails
+                    upsert: {
+                        create: {
+                            ApiCode: breakPoint.apicode,
+                            Emails: breakPoint.emails
+                        },
+                        update: {
+                            ApiCode: breakPoint.apicode,
+                            Emails: breakPoint.emails
+                        }
                     }
                 }
             }
@@ -114,6 +120,7 @@ export async function updateLog(
         throw new Error(error.message);
     }
 }
+
 
 
 //logs getall getone update  admin login change pricing gen api , 

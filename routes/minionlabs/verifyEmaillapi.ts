@@ -43,7 +43,12 @@ app.post("/executeFile", verifyAuthToken, upload.single('file'), async (req: Req
 
         // extract emails
         const emailsList: string[] = await extractEmails(file);
+        if (emailsList.length === 0) {
+            res.status(400).json({ message: "No emails found in the file please check your file" });
+            return;
+        }
         console.log(emailsList);
+    
 
         const emailsCount = emailsList.length;
         const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
@@ -103,6 +108,100 @@ app.post("/executeFile", verifyAuthToken, upload.single('file'), async (req: Req
     }
 });
 
+app.post("/executeFileJsonInput", verifyAuthToken, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userID = (req as any).user.UserID;
+        const email = (req as any).user.email;
+        // file came
+
+        // const file = req.file;
+        // if (!file) {
+        //     res.status(400).json({ message: "File not found" });
+        //     return;
+        // }
+        const {emails} = req.body;
+
+        const currentTime = new Date().getTime();
+
+        const JSONData = JSON.stringify(emails);
+        // file upload to s3
+        const fileName = `${userID}-${email}-${currentTime}.json`;
+        const inputParams = {
+            Bucket: "verify",
+            Key: fileName,
+            Body: JSONData,
+            ACL: "private",
+        }
+        const uploadResult = await s3.upload(inputParams).promise();
+
+        // extract emails
+        // const emailsList: string[] = await extractEmails(file);
+        // if (emailsList.length === 0) {
+        //     res.status(400).json({ message: "No emails found in the file please check your file" });
+        //     return;
+        // }
+        console.log(emails);
+    
+
+        const emailsCount = emails.length;
+        const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
+
+        // deduct credits 
+        const credits = await removeCredits(creditsUsed, userID);
+        if (!credits) {
+            res.status(400).json({ message: "Insufficient credits" });
+            return;
+        }
+
+        // send request to SMTP ENDPOINT
+        const response = await fetch(process.env.SMTPENDPOINT as string, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                emails: emails,
+            }),
+            redirect: "follow",
+        })
+
+        if (!response.ok) {
+            res.status(400).json({ message: "Failed to send emails to SMTP server" });
+            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount);
+            if (!log) {
+                res.status(400).json({ message: "Failed to create log" });
+                return;
+            }
+
+            const updatedLog = await updateLog(log.LogID, "failed at 1", ({
+                apicode: 1,
+                emails: emails
+            } as BreakPoint));
+            if (!updatedLog) {
+                res.status(400).json({ message: "Failed to update log at First server failure" });
+                return;
+            }
+            return;
+        }
+
+        const data = await response.json() as SMTPResponse;
+
+        // create log
+        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount);
+
+        if (!log) {
+            res.status(400).json({ message: "Failed to create log" });
+            return;
+        }
+
+        res.status(200).json({ message: "File uploaded successfully", log });
+
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
 app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): Promise<void> => {
     try {
         const userID = (req as any).user.UserID;
@@ -139,12 +238,19 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
         }
 
         const statusData = await SMTPResponseStatus.json() as SMTPStatus;
-        if (!statusData.finished_at) {
-            res.status(200).json({ message: "In progress" });
+        if (statusData.status === 'pending') {
+            res.status(200).json({ message: "In progress" , progress: statusData.progress});
             return;
         }
 
+        console.log(statusData);
+
+        if(!statusData.emails){
+            res.status(500).json({ message: "No emails found in first SMTP server" });
+            return;
+        }
         for (const email of statusData.emails) {
+            console.log(email);
             if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
                 if (email.provider === "googleworkspace") {
                     googleWorkspaceEmails.push(email);

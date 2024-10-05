@@ -5,14 +5,15 @@ import csvParser from 'csv-parser';
 export async function extractEmails(file: Express.Multer.File): Promise<string[]> {
     const emailsList: string[] = [];
 
-    const fileStream = Readable.from(file.buffer);
+    const fileStream = Readable.from(file.buffer);  // Create stream from the file buffer
 
     return new Promise((resolve, reject) => {
         fileStream
-            .pipe(csvParser())  // Parse CSV
+            .pipe(csvParser())  // Parse CSV with headers
             .on("data", (row) => {
-                if (row.emails) {  // Assuming 'emails' is the column header
-                    emailsList.push(row.emails);
+                console.log('Parsed row:', row);  // Log each parsed row to check structure
+                if (row.emails && row.emails.trim() || row.Emails && row.Emails.trim()) {
+                    emailsList.push(row.emails.trim());  // Trim emails to remove extra spaces
                 }
             })
             .on("end", () => {

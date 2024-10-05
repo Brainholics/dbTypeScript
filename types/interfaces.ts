@@ -66,6 +66,7 @@ export interface SMTPStatus {
     user_id: string;
     size: number;
     progress: number;
+    status: string;
     type: string;
     stats: EmailStats;
     emails: Email[];
