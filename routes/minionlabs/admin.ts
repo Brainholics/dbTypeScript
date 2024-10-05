@@ -325,7 +325,7 @@ app.get("/getAllVerifyEmailLogs", adminVerification, async (req: Request, res: R
 
 //change prices
 
-app.post("changeVerifyEmailPrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
+app.post("/changeVerifyEmailPrice", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
     try {
         const { newPrice } = req.body;
         if (isNaN(newPrice) || !newPrice) {
