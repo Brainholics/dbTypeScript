@@ -299,7 +299,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
 
             })
 
-            res.status(200).json({ message: "File uploaded successfully", fileName: jsonFileName, dataURL: storedLocation });
+            res.status(200).json({ message: "File uploaded successfully", fileName: jsonFileName, dataURL: storedLocation , validEmails: validEmails.length, catchAllValidEmails: catchAllValidEmails.length, catchAllEmails: catchAllEmails.length, invalidEmails: invalidEmails.length, UnknownEmails: UnknownEmails.length  });
 
 
         } else if (responseFormat === "csv") {
@@ -326,7 +326,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 storedLocation = data.Location;
             })
 
-            res.status(200).json({ message: "File uploaded successfully", fileName: fileName + ".csv", dataURL: storedLocation });
+            res.status(200).json({ message: "File uploaded successfully", fileName: fileName + ".csv", dataURL: storedLocation , validEmails: validEmails.length, catchAllValidEmails: catchAllValidEmails.length, catchAllEmails: catchAllEmails.length, invalidEmails: invalidEmails.length, UnknownEmails: UnknownEmails.length  });
 
         } else {
             res.status(400).json({ message: "Invalid response format" });
