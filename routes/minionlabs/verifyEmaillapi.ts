@@ -384,7 +384,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 }
             });
 
-            const s3UploadStatus = await uploadToS3("verify-output",fileName+"json",JSONData,"public-read");
+            const s3UploadStatus = await uploadToS3("verify-output",fileName+".json",JSONData,"public-read");
 
             if(!s3UploadStatus){
                 res.status(500).json({ message: "Failed to upload CSV to S3" });
@@ -458,7 +458,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 }
             });
 
-            const s3UploadStatus = await uploadToS3("verify-output",fileName+"csv",csvData,"public-read");
+            const s3UploadStatus = await uploadToS3("verify-output",fileName+".csv",csvData,"public-read");
 
             if(!s3UploadStatus){
                 res.status(500).json({ message: "Failed to upload CSV to S3" });

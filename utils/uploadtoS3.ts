@@ -9,6 +9,7 @@ export async function uploadToS3(
     type: string,
 ): Promise<S3UploadResponse | null> {
     return new Promise<S3UploadResponse | null>((resolve, reject) => {
+        console.log(FileName)
         s3.upload({
             Bucket: bucketName,
             Key: FileName,
