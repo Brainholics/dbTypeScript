@@ -3,11 +3,12 @@ import express, { Request, Response } from "express";
 import { writeFile } from "fs";
 import multer from "multer";
 import { Readable } from 'stream';
+import { removeCredits } from "../../db/enrichminion/user";
 import { createLog, updateLog } from "../../db/verifyEmail/log";
 import s3 from "../../db/verifyEmail/s3";
-import { removeCredits } from "../../db/enrichminion/user";
 import verifyAuthToken from "../../middleware/enrichminion/apiAuth";
 import { BreakPoint, Email, SECONDAPIResponse, SMTPResponse, SMTPStatus } from '../../types/interfaces';
+import { extractEmails } from '../../utils/extractEmails';
 dotenv.config();
 
 
@@ -28,7 +29,7 @@ app.post("/executeFile", verifyAuthToken, upload.single('file'), async (req: Req
         }
 
         const currentTime = new Date().getTime();
-        const emailsList: string[] = [];
+        const emailsList: string[] = await extractEmails(file);
 
         // file upload to s3
         const fileName = `${userID}-${email}-${currentTime}.csv`;
@@ -41,19 +42,19 @@ app.post("/executeFile", verifyAuthToken, upload.single('file'), async (req: Req
         const uploadResult = await s3.upload(inputParams).promise();
 
         // extract emails
-        const fileStream = Readable.from(file.buffer);
-        fileStream.on("data", (row) => {
-            if (row.emails) {
-                emailsList.push(row.emails);
-            }
-        }).on("end", () => {
-            console.log(`${fileName} emails extracted`);
-        }).on("error", (error) => {
-            res.status(500).json({ message: error.message });
-        });
+        // const fileStream = Readable.from(file.buffer);
+        // fileStream.on("data", (row) => {
+        //     if (row.emails) {
+        //         emailsList.push(row.emails);
+        //     }
+        // }).on("end", () => {
+        //     console.log(`${fileName} emails extracted`);
+        // }).on("error", (error) => {
+        //     res.status(500).json({ message: error.message });
+        // });
 
         const emailsCount = emailsList.length;
-        const creditsUsed = emailsCount * parseInt(process.env.COSTPEREMAIL as string);
+        const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
 
         // deduct credits 
         const credits = await removeCredits(creditsUsed, userID);
@@ -76,13 +77,13 @@ app.post("/executeFile", verifyAuthToken, upload.single('file'), async (req: Req
 
         if (!response.ok) {
             res.status(400).json({ message: "Failed to send emails to SMTP server" });
-            const log = await createLog("0",userID,fileName,creditsUsed,emailsCount);
+            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount);
             if (!log) {
                 res.status(400).json({ message: "Failed to create log" });
                 return;
             }
 
-            const updatedLog = await updateLog(log.LogID, "failed at 1",({
+            const updatedLog = await updateLog(log.LogID, "failed at 1", ({
                 apicode: 1,
                 emails: emailsList
             } as BreakPoint));
@@ -160,13 +161,13 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 }
             } else if (email.result === "deliverable") {
                 validEmails.push(email);
-            } else{
+            } else {
                 invalidEmails.push(email);
             }
         }
 
-        for(const email of googleWorkspaceEmails){
-            const response = await fetch(process.env.SECONDENDPOINT as string,{
+        for (const email of googleWorkspaceEmails) {
+            const response = await fetch(process.env.SECONDENDPOINT as string, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -178,7 +179,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
 
             if (!response.ok) {
                 const pendingEmails = [...googleWorkspaceEmails, ...restEmails];
-                const updatedLog = await updateLog(logID, "failed at 2",({
+                const updatedLog = await updateLog(logID, "failed at 2", ({
                     apicode: 2,
                     emails: pendingEmails.map((email) => email.email)
                 } as BreakPoint))
@@ -191,31 +192,27 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             }
 
             const data = await response.json() as SECONDAPIResponse;
-            
-            if (data['EMAIL-status'] === "valid")
-            {
+
+            if (data['EMAIL-status'] === "valid") {
                 validEmails.push(email);
             }
-            
-            else if(data['EMAIL-status'] === "catchall_valid")
-            {
+
+            else if (data['EMAIL-status'] === "catchall_valid") {
                 catchAllValidEmails.push(email);
             }
-            
-            else if(data['EMAIL-status'] === "catchall")
-            {
+
+            else if (data['EMAIL-status'] === "catchall") {
                 catchAllEmails.push(email);
             }
-            
-            else
-            {
+
+            else {
                 restEmails.push(email);
             }
         }
 
-        for(const email of restEmails){
-            
-            const response = await fetch(process.env.THIRDENDPOINT as string,{
+        for (const email of restEmails) {
+
+            const response = await fetch(process.env.THIRDENDPOINT as string, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -225,8 +222,8 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 })
             })
 
-            if (!response.ok){
-                const updatedLog = await updateLog(logID, "failed at 3",({
+            if (!response.ok) {
+                const updatedLog = await updateLog(logID, "failed at 3", ({
                     apicode: 3,
                     emails: restEmails.map((email) => email.email)
                 } as BreakPoint))
@@ -237,26 +234,22 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 res.status(400).json({ message: "Failed to send emails to THIRD server" });
                 return;
             }
-            
+
             const data = await response.json() as SECONDAPIResponse;
-            
-            if (data['EMAIL-status'] === "valid")
-            {
+
+            if (data['EMAIL-status'] === "valid") {
                 validEmails.push(email);
             }
-            
-            else if(data['EMAIL-status'] === "catchall_valid")
-            {
+
+            else if (data['EMAIL-status'] === "catchall_valid") {
                 catchAllValidEmails.push(email);
             }
-            
-            else if(data['EMAIL-status'] === "catchall")
-            {
+
+            else if (data['EMAIL-status'] === "catchall") {
                 catchAllEmails.push(email);
             }
-            
-            else
-            {
+
+            else {
                 UnknownEmails.push(email);
             }
         }
@@ -290,7 +283,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 Key: jsonFileName,
                 Body: JSONData,
                 ACL: "public-read",
-            }, (error : any, data: any) => {
+            }, (error: any, data: any) => {
                 if (error) {
                     res.status(500).json({ message: error.message });
                     return;
@@ -318,7 +311,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 Key: fileName + ".csv",
                 Body: csvData,
                 ACL: "public-read",
-            }, (error : any, data: any) => {
+            }, (error: any, data: any) => {
                 if (error) {
                     res.status(500).json({ message: error.message });
                     return;
@@ -333,7 +326,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             return;
         }
 
-        const updatedLog = await updateLog(logID, "done",({
+        const updatedLog = await updateLog(logID, "done", ({
             apicode: 4,
             emails: []
         } as BreakPoint))

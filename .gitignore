@@ -5,3 +5,4 @@ node_modules
 prisma/enrichminion/generated/*
 prisma/podcast/generated/*
 data
+output

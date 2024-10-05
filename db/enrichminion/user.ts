@@ -86,6 +86,9 @@ export async function removeCredits(removeCreds: number, userId: string): Promis
 
         const updatedCred = data.credits - Math.abs(removeCreds);
 
+        if (updatedCred < 0) {
+            throw new Error("Insufficient credits");
+        }
         data = await prisma.user.update({
             where: {
                 UserID: userId,

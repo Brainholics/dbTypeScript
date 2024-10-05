@@ -101,7 +101,7 @@ export async function updateLog(
             data: {
                 status: status,
                 breakPoint: {
-                    create: {
+                    update: {
                         ApiCode: breakPoint.apicode,
                         Emails: breakPoint.emails
                     }

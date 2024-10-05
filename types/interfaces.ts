@@ -75,3 +75,11 @@ export interface SECONDAPIResponse {
     "EMAIL-status": string;
     Email: string;
 }
+
+export interface S3UploadResponse {
+    ETag: string;
+    Location: string;
+    key: string;
+    Key: string;
+    Bucket: string;
+  }
