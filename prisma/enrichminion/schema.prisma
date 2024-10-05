@@ -39,6 +39,7 @@ model EnrichmentLogs{
   currency String
   creditsUsed Int
   fileName String
+  URL String?
   Date DateTime
   user User @relation(fields: [userID], references: [UserID])
 }
