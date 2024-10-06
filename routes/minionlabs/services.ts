@@ -22,92 +22,92 @@ app.post("/executeFile", verifySessionToken, upload.single('file'), async (req: 
     try {
         const userID = (req as any).user.id;
         const email = (req as any).user.email;
-               // file came
+        // file came
 
-               const file = req.file;
-               if (!file) {
-                   res.status(400).json({ message: "File not found" });
-                   return;
-               }
-       
-               const currentTime = new Date().getTime();
-       
-               // file upload to s3
-               const fileName = `${userID}-${email}-${currentTime}.csv`;
-               const inputParams = {
-                   Bucket: "verify",
-                   Key: fileName,
-                   Body: file.buffer,
-                   ACL: "private",
-               }
-               const uploadResult = await s3.upload(inputParams).promise();
-       
-               // extract emails
-               const emailsList: string[] = await extractEmails(file);
-               if (emailsList.length === 0) {
-                   res.status(400).json({ message: "No emails found in the file please check your file" });
-                   return;
-               }
-               console.log(emailsList);
-           
-       
-               const emailsCount = emailsList.length;
-               const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
-       
-               // deduct credits 
-               const credits = await removeCredits(creditsUsed, userID);
-               if (!credits) {
-                   res.status(400).json({ message: "Insufficient credits" });
-                   return;
-               }
-       
-               // send request to SMTP ENDPOINT
-               const response = await fetch(process.env.SMTPENDPOINT as string, {
-                   method: "POST",
-                   headers: {
-                       "Content-Type": "application/json",
-                   },
-                   body: JSON.stringify({
-                       emails: emailsList,
-                   }),
-                   redirect: "follow",
-               })
-       
-               if (!response.ok) {
-                   res.status(400).json({ message: "Failed to send emails to SMTP server" });
-                   const log = await createLog("0", userID, fileName, creditsUsed, emailsCount);
-                   if (!log) {
-                       res.status(400).json({ message: "Failed to create log" });
-                       return;
-                   }
-       
-                   const updatedLog = await updateLog(log.LogID, "failed at 1", ({
-                       apicode: 1,
-                       emails: emailsList
-                   } as BreakPoint));
-                   if (!updatedLog) {
-                       res.status(400).json({ message: "Failed to update log at First server failure" });
-                       return;
-                   }
-                   return;
-               }
-       
-               const data = await response.json() as SMTPResponse;
-       
-               // create log
-               const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount);
-       
-               if (!log) {
-                   res.status(400).json({ message: "Failed to create log" });
-                   return;
-               }
-       
-               res.status(200).json({ message: "File uploaded successfully", log });
-       
-           } catch (error: any) {
-               res.status(500).json({ message: error.message });
-           }
-       });
+        const file = req.file;
+        if (!file) {
+            res.status(400).json({ message: "File not found" });
+            return;
+        }
+
+        const currentTime = new Date().getTime();
+
+        // file upload to s3
+        const fileName = `${userID}-${email}-${currentTime}.csv`;
+        const inputParams = {
+            Bucket: "verify",
+            Key: fileName,
+            Body: file.buffer,
+            ACL: "private",
+        }
+        const uploadResult = await s3.upload(inputParams).promise();
+
+        // extract emails
+        const emailsList: string[] = await extractEmails(file);
+        if (emailsList.length === 0) {
+            res.status(400).json({ message: "No emails found in the file please check your file" });
+            return;
+        }
+        console.log(emailsList);
+
+
+        const emailsCount = emailsList.length;
+        const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
+
+        // deduct credits 
+        const credits = await removeCredits(creditsUsed, userID);
+        if (!credits) {
+            res.status(400).json({ message: "Insufficient credits" });
+            return;
+        }
+
+        // send request to SMTP ENDPOINT
+        const response = await fetch(process.env.SMTPENDPOINT as string, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                emails: emailsList,
+            }),
+            redirect: "follow",
+        })
+
+        if (!response.ok) {
+            res.status(400).json({ message: "Failed to send emails to SMTP server" });
+            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount);
+            if (!log) {
+                res.status(400).json({ message: "Failed to create log" });
+                return;
+            }
+
+            const updatedLog = await updateLog(log.LogID, "failed at 1", ({
+                apicode: 1,
+                emails: emailsList
+            } as BreakPoint));
+            if (!updatedLog) {
+                res.status(400).json({ message: "Failed to update log at First server failure" });
+                return;
+            }
+            return;
+        }
+
+        const data = await response.json() as SMTPResponse;
+
+        // create log
+        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount);
+
+        if (!log) {
+            res.status(400).json({ message: "Failed to create log" });
+            return;
+        }
+
+        res.status(200).json({ message: "File uploaded successfully", log });
+
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 app.post("/executeFileJsonInput", verifySessionToken, async (req: Request, res: Response): Promise<void> => {
     try {
@@ -120,7 +120,7 @@ app.post("/executeFileJsonInput", verifySessionToken, async (req: Request, res: 
         //     res.status(400).json({ message: "File not found" });
         //     return;
         // }
-        const {emails} = req.body;
+        const { emails } = req.body;
 
         const currentTime = new Date().getTime();
 
@@ -142,7 +142,7 @@ app.post("/executeFileJsonInput", verifySessionToken, async (req: Request, res: 
         //     return;
         // }
         console.log(emails);
-    
+
 
         const emailsCount = emails.length;
         const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
@@ -220,7 +220,6 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
         const restEmails: Email[] = [];
         const validEmails: Email[] = [];
         const catchAllValidEmails: Email[] = [];
-        const catchAllEmails: Email[] = [];
         const UnknownEmails: Email[] = [];
         const invalidEmails: Email[] = [];
 
@@ -239,16 +238,16 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         const statusData = await SMTPResponseStatus.json() as SMTPStatus;
         if (statusData.status === 'pending') {
-            res.status(200).json({ message: "In progress" , progress: statusData.progress});
+            res.status(200).json({ message: "In progress", progress: statusData.progress });
             return;
         }
 
-        console.log(statusData);
 
-        if(!statusData.emails){
+        if (!statusData.emails) {
             res.status(500).json({ message: "No emails found in first SMTP server" });
             return;
         }
+
         for (const email of statusData.emails) {
             console.log(email);
             if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
@@ -265,53 +264,9 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             }
         }
 
-        for (const email of googleWorkspaceEmails) {
-            const response = await fetch(process.env.SECONDENDPOINT as string, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    email: email.email
-                })
-            });
-
-            if (!response.ok) {
-                const pendingEmails = [...googleWorkspaceEmails, ...restEmails];
-                const updatedLog = await updateLog(logID, "failed at 2", ({
-                    apicode: 2,
-                    emails: pendingEmails.map((email) => email.email)
-                } as BreakPoint))
-                if (!updatedLog) {
-                    res.status(400).json({ message: "Failed to update log in case of second server failure" });
-                    return;
-                }
-                res.status(400).json({ message: "Failed to send emails to SECOND server" });
-                return;
-            }
-
-            const data = await response.json() as SECONDAPIResponse;
-
-            if (data['EMAIL-status'] === "valid") {
-                validEmails.push(email);
-            }
-
-            else if (data['EMAIL-status'] === "catchall_valid") {
-                catchAllValidEmails.push(email);
-            }
-
-            else if (data['EMAIL-status'] === "catchall") {
-                catchAllEmails.push(email);
-            }
-
-            else {
-                restEmails.push(email);
-            }
-        }
-
         for (const email of restEmails) {
 
-            const response = await fetch(process.env.THIRDENDPOINT as string, {
+            const response = await fetch(process.env.OutlookEndpoint as string, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -322,32 +277,68 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             })
 
             if (!response.ok) {
-                const updatedLog = await updateLog(logID, "failed at 3", ({
-                    apicode: 3,
-                    emails: restEmails.map((email) => email.email)
+                const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
+                const updatedLog = await updateLog(logID, "failed at outlook server", ({
+                    apicode: 2,
+                    emails: pendingEmails.map((email) => email.email)
                 } as BreakPoint))
                 if (!updatedLog) {
-                    res.status(400).json({ message: "Failed to update log in case of third server failure" });
+                    res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
                     return;
                 }
-                res.status(400).json({ message: "Failed to send emails to THIRD server" });
+                res.status(400).json({ message: "Failed to send emails to outlook server" });
                 return;
             }
 
             const data = await response.json() as SECONDAPIResponse;
 
             if (data['EMAIL-status'] === "valid") {
-                validEmails.push(email);
+                if (email.result === "catch_all" || email.result === "risky") {
+                    catchAllValidEmails.push(email);
+                }
+                else {
+                    validEmails.push(email);
+                }
+            }
+            else {
+                googleWorkspaceEmails.push(email);
+            }
+        }
+
+        for (const email of googleWorkspaceEmails) {
+            const response = await fetch(process.env.GsuiteEndpoint as string, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email.email
+                })
+            });
+
+            if (!response.ok) {
+                const updatedLog = await updateLog(logID, "failed at Gsuite", ({
+                    apicode: 3,
+                    emails: googleWorkspaceEmails.map((email) => email.email)
+                } as BreakPoint))
+                if (!updatedLog) {
+                    res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
+                    return;
+                }
+                res.status(400).json({ message: "Failed to send emails to Gsuite server" });
+                return;
             }
 
-            else if (data['EMAIL-status'] === "catchall_valid") {
-                catchAllValidEmails.push(email);
-            }
+            const data = await response.json() as SECONDAPIResponse;
 
-            else if (data['EMAIL-status'] === "catchall") {
-                catchAllEmails.push(email);
+            if (data['EMAIL-status'] === "valid") {
+                if (email.result === "catch_all" || email.result === "risky") {
+                    catchAllValidEmails.push(email);
+                }
+                else {
+                    validEmails.push(email);
+                }
             }
-
             else {
                 UnknownEmails.push(email);
             }
@@ -362,7 +353,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             const data = {
                 ValidEmails: validEmails.map((email) => email.email),
                 CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
-                CatchAllEmails: catchAllEmails.map((email) => email.email),
+                // CatchAllEmails: catchAllEmails.map((email) => email.email),
                 InvalidEmails: invalidEmails.map((email) => email.email),
                 UnknownEmails: UnknownEmails.map((email) => email.email)
             };
@@ -384,13 +375,13 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
                 }
             });
 
-            const s3UploadStatus = await uploadToS3("verify-output",fileName+".json",JSONData,"public-read");
+            const s3UploadStatus = await uploadToS3("verify-output", fileName + ".json", JSONData, "public-read");
 
-            if(!s3UploadStatus){
+            if (!s3UploadStatus) {
                 res.status(500).json({ message: "Failed to upload CSV to S3" });
                 return;
             }
-            storedLocation= s3UploadStatus.Location;
+            storedLocation = s3UploadStatus.Location;
 
             console.log("Stored Location: ", storedLocation);
 
@@ -409,7 +400,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
                 dataURL: storedLocation,
                 validEmails: validEmails.length,
                 catchAllValidEmails: catchAllValidEmails.length,
-                catchAllEmails: catchAllEmails.length,
+                // catchAllEmails: catchAllEmails.length,
                 invalidEmails: invalidEmails.length,
                 UnknownEmails: UnknownEmails.length
             });
@@ -419,31 +410,31 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
             const csvHeaders = ["Valid Emails", "Catch All Valid Emails", "Catch All Emails", "Invalid Emails", "Unknown Emails"];
             const headersRow = csvHeaders.join(",");
-            
+
             // Use the maximum length of the lists to define the number of rows
             const maxLength = Math.max(
                 validEmails.length,
                 catchAllValidEmails.length,
-                catchAllEmails.length,
+                // catchAllEmails.length,
                 invalidEmails.length,
                 UnknownEmails.length
             );
-            
+
             // Create CSV rows in a single pass
             const csvRows = Array.from({ length: maxLength }, (_, i) => {
                 return [
                     validEmails[i]?.email || "", // Optional chaining and fallback to empty string
                     catchAllValidEmails[i]?.email || "",
-                    catchAllEmails[i]?.email || "",
+                    // catchAllEmails[i]?.email || "",
                     invalidEmails[i]?.email || "",
                     UnknownEmails[i]?.email || ""
                 ].join(","); // Join each row with a comma
             });
-            
+
             // Combine headers and rows
             const csvData = [headersRow, ...csvRows].join("\n"); // Join headers and rows with new line
-            
-            
+
+
             const outputDir = './output';
             if (!existsSync(outputDir)) {
                 console.log("Creating output directory");
@@ -458,40 +449,40 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
                 }
             });
 
-            const s3UploadStatus = await uploadToS3("verify-output",fileName+".csv",csvData,"public-read");
+            const s3UploadStatus = await uploadToS3("verify-output", fileName + ".csv", csvData, "public-read");
 
-            if(!s3UploadStatus){
+            if (!s3UploadStatus) {
                 res.status(500).json({ message: "Failed to upload CSV to S3" });
                 return;
             }
 
-            storedLocation= s3UploadStatus.Location;
-            
-                // Send the response only after the S3 upload completes
-                const updatedLog = await updateLog(logID, "done", ({
-                    apicode: 4,
-                    emails: []
-                } as BreakPoint))
-                if (!updatedLog) {
-                    res.status(400).json({ message: "Failed to update log at Done" });
-                    return;
-                }
+            storedLocation = s3UploadStatus.Location;
 
-                res.status(200).json({
-                    message: "File uploaded successfully",
-                    fileName: fileName + ".csv",
-                    dataURL: storedLocation,
-                    validEmails: validEmails.length,
-                    catchAllValidEmails: catchAllValidEmails.length,
-                    catchAllEmails: catchAllEmails.length,
-                    invalidEmails: invalidEmails.length,
-                    UnknownEmails: UnknownEmails.length
-                });
+            // Send the response only after the S3 upload completes
+            const updatedLog = await updateLog(logID, "done", ({
+                apicode: 4,
+                emails: []
+            } as BreakPoint))
+            if (!updatedLog) {
+                res.status(400).json({ message: "Failed to update log at Done" });
+                return;
+            }
+
+            res.status(200).json({
+                message: "File uploaded successfully",
+                fileName: fileName + ".csv",
+                dataURL: storedLocation,
+                validEmails: validEmails.length,
+                catchAllValidEmails: catchAllValidEmails.length,
+                // catchAllEmails: catchAllEmails.length,
+                invalidEmails: invalidEmails.length,
+                UnknownEmails: UnknownEmails.length
+            });
 
         } else {
             res.status(400).json({ message: "Invalid response format" });
             return;
-        }      
+        }
         return;
     } catch (error: any) {
         res.status(500).json({ message: error.message });
