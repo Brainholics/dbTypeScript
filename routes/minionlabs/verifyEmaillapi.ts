@@ -220,7 +220,6 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
         const restEmails: Email[] = [];
         const validEmails: Email[] = [];
         const catchAllValidEmails: Email[] = [];
-        const catchAllEmails: Email[] = [];
         const UnknownEmails: Email[] = [];
         const invalidEmails: Email[] = [];
 
@@ -243,12 +242,12 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             return;
         }
 
-        console.log(statusData);
 
         if(!statusData.emails){
             res.status(500).json({ message: "No emails found in first SMTP server" });
             return;
         }
+
         for (const email of statusData.emails) {
             console.log(email);
             if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
@@ -265,53 +264,9 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             }
         }
 
-        for (const email of googleWorkspaceEmails) {
-            const response = await fetch(process.env.SECONDENDPOINT as string, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    email: email.email
-                })
-            });
-
-            if (!response.ok) {
-                const pendingEmails = [...googleWorkspaceEmails, ...restEmails];
-                const updatedLog = await updateLog(logID, "failed at 2", ({
-                    apicode: 2,
-                    emails: pendingEmails.map((email) => email.email)
-                } as BreakPoint))
-                if (!updatedLog) {
-                    res.status(400).json({ message: "Failed to update log in case of second server failure" });
-                    return;
-                }
-                res.status(400).json({ message: "Failed to send emails to SECOND server" });
-                return;
-            }
-
-            const data = await response.json() as SECONDAPIResponse;
-
-            if (data['EMAIL-status'] === "valid") {
-                validEmails.push(email);
-            }
-
-            else if (data['EMAIL-status'] === "catchall_valid") {
-                catchAllValidEmails.push(email);
-            }
-
-            else if (data['EMAIL-status'] === "catchall") {
-                catchAllEmails.push(email);
-            }
-
-            else {
-                restEmails.push(email);
-            }
-        }
-
         for (const email of restEmails) {
 
-            const response = await fetch(process.env.THIRDENDPOINT as string, {
+            const response = await fetch(process.env.OutlookEndpoint as string, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -322,32 +277,70 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             })
 
             if (!response.ok) {
-                const updatedLog = await updateLog(logID, "failed at 3", ({
-                    apicode: 3,
-                    emails: restEmails.map((email) => email.email)
+                const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
+                const updatedLog = await updateLog(logID, "failed at outlook server", ({
+                    apicode: 2,
+                    emails: pendingEmails.map((email) => email.email)
                 } as BreakPoint))
                 if (!updatedLog) {
-                    res.status(400).json({ message: "Failed to update log in case of third server failure" });
+                    res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
                     return;
                 }
-                res.status(400).json({ message: "Failed to send emails to THIRD server" });
+                res.status(400).json({ message: "Failed to send emails to outlook server" });
                 return;
             }
 
             const data = await response.json() as SECONDAPIResponse;
 
             if (data['EMAIL-status'] === "valid") {
-                validEmails.push(email);
+                if( email.result === "catch_all" || email.result === "risky")
+                {
+                    catchAllValidEmails.push(email);
+                }
+                else{
+                    validEmails.push(email);    
+                }
+            }
+            else {
+                googleWorkspaceEmails.push(email);
+            }
+        }
+
+        for (const email of googleWorkspaceEmails) {
+            const response = await fetch(process.env.GsuiteEndpoint as string, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email.email
+                })
+            });
+
+            if (!response.ok) {
+                const updatedLog = await updateLog(logID, "failed at Gsuite", ({
+                    apicode: 3,
+                    emails: googleWorkspaceEmails.map((email) => email.email)
+                } as BreakPoint))
+                if (!updatedLog) {
+                    res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
+                    return;
+                }
+                res.status(400).json({ message: "Failed to send emails to Gsuite server" });
+                return;
             }
 
-            else if (data['EMAIL-status'] === "catchall_valid") {
-                catchAllValidEmails.push(email);
-            }
+            const data = await response.json() as SECONDAPIResponse;
 
-            else if (data['EMAIL-status'] === "catchall") {
-                catchAllEmails.push(email);
+            if (data['EMAIL-status'] === "valid") {
+                if( email.result === "catch_all" || email.result === "risky")
+                {
+                    catchAllValidEmails.push(email);
+                }
+                else{
+                    validEmails.push(email);
+                }
             }
-
             else {
                 UnknownEmails.push(email);
             }
@@ -362,7 +355,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             const data = {
                 ValidEmails: validEmails.map((email) => email.email),
                 CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
-                CatchAllEmails: catchAllEmails.map((email) => email.email),
+                // CatchAllEmails: catchAllEmails.map((email) => email.email),
                 InvalidEmails: invalidEmails.map((email) => email.email),
                 UnknownEmails: UnknownEmails.map((email) => email.email)
             };
@@ -409,7 +402,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 dataURL: storedLocation,
                 validEmails: validEmails.length,
                 catchAllValidEmails: catchAllValidEmails.length,
-                catchAllEmails: catchAllEmails.length,
+                // catchAllEmails: catchAllEmails.length,
                 invalidEmails: invalidEmails.length,
                 UnknownEmails: UnknownEmails.length
             });
@@ -424,7 +417,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             const maxLength = Math.max(
                 validEmails.length,
                 catchAllValidEmails.length,
-                catchAllEmails.length,
+                // catchAllEmails.length,
                 invalidEmails.length,
                 UnknownEmails.length
             );
@@ -434,7 +427,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                 return [
                     validEmails[i]?.email || "", // Optional chaining and fallback to empty string
                     catchAllValidEmails[i]?.email || "",
-                    catchAllEmails[i]?.email || "",
+                    // catchAllEmails[i]?.email || "",
                     invalidEmails[i]?.email || "",
                     UnknownEmails[i]?.email || ""
                 ].join(","); // Join each row with a comma
@@ -483,7 +476,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
                     dataURL: storedLocation,
                     validEmails: validEmails.length,
                     catchAllValidEmails: catchAllValidEmails.length,
-                    catchAllEmails: catchAllEmails.length,
+                    // catchAllEmails: catchAllEmails.length,
                     invalidEmails: invalidEmails.length,
                     UnknownEmails: UnknownEmails.length
                 });
