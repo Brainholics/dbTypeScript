@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
+import { generateAPIkey, getApiKey, revokeAPIkey } from "../../db/enrichminion/admin";
 import { addCredits, createUser, getUser, removeCredits } from "../../db/enrichminion/user";
 import userMiddleware from "../../middleware/enrichminion/supabaseAuth";
-import { generateAPIkey, getApiKey, revokeAPIkey} from "../../db/enrichminion/admin";
 
 const app = express.Router();
 
@@ -104,16 +104,16 @@ app.get("/getCredits", userMiddleware, async (req: Request, res: Response): Prom
 
 app.get("/getEnrichMinionCost", async (req: Request, res: Response): Promise<void> => {
     try {
-        const enrichminiondbPrice = parseInt(process.env.enrichminiondb_price as string);
+        const enrichminiondbPrice = parseInt(process.env.EnrichCost as string);
         res.status(200).json({ enrichminiondbPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 })
 
-app.get("/getEnrichMinionCostWithAuth", userMiddleware,async (req: Request, res: Response): Promise<void> => {
+app.get("/getEnrichMinionCostWithAuth", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
-        const enrichminiondbPrice = parseInt(process.env.enrichminiondb_price as string);
+        const enrichminiondbPrice = parseInt(process.env.EnrichCost as string);
         res.status(200).json({ enrichminiondbPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -122,7 +122,7 @@ app.get("/getEnrichMinionCostWithAuth", userMiddleware,async (req: Request, res:
 
 app.get("/getEnrichMinionAccessCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
-        const accessPrice = parseInt(process.env.enrichminiondb_per_row_cost as string);
+        const accessPrice = parseInt(process.env.CreditPrice as string);
         res.status(200).json({ accessPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -131,7 +131,7 @@ app.get("/getEnrichMinionAccessCost", userMiddleware, async (req: Request, res: 
 
 app.get("/getVerifyEmailCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
-        const verifyEmailPrice = parseInt(process.env.COSTPEREMAIIL as string);
+        const verifyEmailPrice = parseInt(process.env.VerifyCost as string);
         res.status(200).json({ verifyEmailPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -142,8 +142,8 @@ app.get("/generateApiKey", userMiddleware, async (req: Request, res: Response): 
     try {
         const userID = (req as any).user.id;
 
-        const updatedUser  = await generateAPIkey(userID);
-        
+        const updatedUser = await generateAPIkey(userID);
+
         if (!updatedUser) {
             res.status(400).json({ message: "Failed to generate API key" });
             return;
@@ -177,8 +177,8 @@ app.get("/revokeApiKey", userMiddleware, async (req: Request, res: Response): Pr
     try {
         const userID = (req as any).user.id;
 
-        const updatedUser  = await revokeAPIkey(userID);
-        
+        const updatedUser = await revokeAPIkey(userID);
+
         if (!updatedUser) {
             res.status(400).json({ message: "Failed to revoke API key" });
             return;

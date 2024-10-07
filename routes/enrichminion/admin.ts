@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
 import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
+import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
 import adminVerification from "../../middleware/enrichminion/adminAuth";
 
 const app = express.Router();
@@ -109,7 +109,7 @@ app.post("/changePrice", adminVerification, async (req: ChangeEnrichPriceRequest
             throw new Error("Invalid price");
         }
 
-        process.env.enrichminiondb_price = newPrice.toString();
+        process.env.EnrichCost = newPrice.toString();
 
         const envFilePath = path.resolve(__dirname, '../../.env');
         if (!fs.existsSync(envFilePath)) {
@@ -117,7 +117,7 @@ app.post("/changePrice", adminVerification, async (req: ChangeEnrichPriceRequest
         }
 
         let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-        const newEnvFileContent = envFileContent.replace(/(^|\n)enrichminiondb_price=.*/, `$1enrichminiondb_price=${newPrice}`);
+        const newEnvFileContent = envFileContent.replace(/(^|\n)EnrichCost=.*/, `$1EnrichCost=${newPrice}`);
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
@@ -217,7 +217,7 @@ app.get("/getAccessCost", adminVerification, async (req: Request, res: Response)
         if (!process.env.enrichminiondb_per_row_cost) {
             throw new Error("no price set");
         }
-        res.status(200).json({ "resp": process.env.enrichminiondb_per_row_cost});
+        res.status(200).json({ "resp": process.env.enrichminiondb_per_row_cost });
     } catch (error: any) {
         res.status(404).json({ "error": error.message });
     }
@@ -255,10 +255,10 @@ app.get("/getCredits", adminVerification, async (req: Request, res: Response) =>
 
 app.get("/getPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
-        if (!process.env.enrichminiondb_price) {
+        if (!process.env.EnrichCost) {
             throw new Error("no price set");
         }
-        res.status(200).json({ "resp": process.env.enrichminiondb_price });
+        res.status(200).json({ "resp": process.env.EnrichCost });
     } catch (error: any) {
         res.status(404).json({ "error": error.message });
     }
