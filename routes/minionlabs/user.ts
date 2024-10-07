@@ -102,19 +102,19 @@ app.get("/getCredits", userMiddleware, async (req: Request, res: Response): Prom
     }
 });
 
-app.get("/getEnrichMinionCost", async (req: Request, res: Response): Promise<void> => {
+app.get("/getCreditCost", async (req: Request, res: Response): Promise<void> => {
     try {
-        const enrichminiondbPrice = parseInt(process.env.EnrichCost as string);
-        res.status(200).json({ enrichminiondbPrice });
+        const creditPrice = parseInt(process.env.CreditPrice as string);
+        res.status(200).json({ creditPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 })
 
-app.get("/getEnrichMinionCostWithAuth", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+app.get("/getCreditCostWithAuth", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
-        const enrichminiondbPrice = parseInt(process.env.EnrichCost as string);
-        res.status(200).json({ enrichminiondbPrice });
+        const creditPrice = parseInt(process.env.CreditPrice as string);
+        res.status(200).json({ creditPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -122,8 +122,8 @@ app.get("/getEnrichMinionCostWithAuth", userMiddleware, async (req: Request, res
 
 app.get("/getEnrichMinionAccessCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
-        const accessPrice = parseInt(process.env.CreditPrice as string);
-        res.status(200).json({ accessPrice });
+        const enrichMinionAccessPrice = parseInt(process.env.EnrichCost as string);
+        res.status(200).json({ enrichMinionAccessPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -131,8 +131,8 @@ app.get("/getEnrichMinionAccessCost", userMiddleware, async (req: Request, res: 
 
 app.get("/getVerifyEmailCost", userMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
-        const verifyEmailPrice = parseInt(process.env.VerifyCost as string);
-        res.status(200).json({ verifyEmailPrice });
+        const verifyEmailAccessPrice = parseInt(process.env.VerifyCost as string);
+        res.status(200).json({ verifyEmailAccessPrice });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

@@ -388,7 +388,7 @@ app.post("/changeCreditPrice", adminVerification, async (req: ChangeEnrichPriceR
         }
 
         let envFileContent = fs.readFileSync(envFilePath, 'utf8');
-        const newEnvFileContent = envFileContent.replace(/(^|\n)CreditPrice=.*/, `$CreditPrice=${newPrice}`);
+        const newEnvFileContent = envFileContent.replace(/(^|\n)CreditPrice=.*/, `$1CreditPrice=${newPrice}`);
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
