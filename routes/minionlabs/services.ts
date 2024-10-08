@@ -111,15 +111,10 @@ app.post("/executeFile", verifySessionToken, upload.single('file'), async (req: 
 
 app.post("/executeFileJsonInput", verifySessionToken, async (req: Request, res: Response): Promise<void> => {
     try {
-        const userID = (req as any).user.UserID;
+        const userID = (req as any).user.id;
         const email = (req as any).user.email;
         // file came
 
-        // const file = req.file;
-        // if (!file) {
-        //     res.status(400).json({ message: "File not found" });
-        //     return;
-        // }
         const { emails } = req.body;
 
         const currentTime = new Date().getTime();

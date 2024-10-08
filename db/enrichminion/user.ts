@@ -97,7 +97,6 @@ export async function removeCredits(removeCreds: number, userId: string): Promis
                 credits: updatedCred,
             },
         });
-
         return data;
     } catch (error: any) {
         throw new Error(error.message);

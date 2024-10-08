@@ -140,7 +140,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, async (req: Request, res: Res
         //     res.status(400).json({ message: "No emails found in the file please check your file" });
         //     return;
         // }
-        console.log(emails);
+        // console.log(emails);
     
 
         const emailsCount = emails.length;
