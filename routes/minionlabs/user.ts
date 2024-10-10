@@ -17,6 +17,16 @@ app.post("/register", userMiddleware, async (req: Request, res: Response): Promi
             return;
         }
 
+        // Add 1000 credits to the new user
+        const credits = parseInt(process.env.RegistrationCredits as string);
+        const state = await addCredits(credits, userID);
+
+        if (!state) {
+            res.status(400).json({ message: "Failed to add initial credits" });
+            return;
+        }
+
+
         res.status(200).json({ message: "User created successfully", user });
 
     } catch (error: any) {

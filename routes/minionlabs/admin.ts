@@ -397,6 +397,30 @@ app.post("/changeCreditPrice", adminVerification, async (req: ChangeEnrichPriceR
     }
 });
 
+app.post("/changeRegistrationCredits", adminVerification, async (req: ChangeEnrichPriceRequest, res: Response) => {  //TESTED
+    try {
+        const { newPrice } = req.body;
+        if (isNaN(newPrice) || !newPrice) {
+            throw new Error("Invalid price");
+        }
+
+        process.env.RegistrationCredits = newPrice.toString();
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)RegistrationCredits=.*/, `$1RegistrationCredits=${newPrice}`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated registration credits" });
+    } catch (error: any) {
+        res.status(400).json({ "error": error.message });
+    }
+});
+
 //get prices
 
 app.get("/getEnrichPrice", adminVerification, async (req: Request, res: Response) => {  //TESTED
@@ -431,5 +455,18 @@ app.get("/getVerifyEmailCost", adminVerification, async (req: Request, res: Resp
         res.status(404).json({ "error": error.message });
     }
 });
+
+app.get("/getRegistrationCredits", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.RegistrationCredits) {
+            throw new Error("no price set");
+        }
+        res.status(200).json({ "resp": process.env.RegistrationCredits});
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
+
 
 export default app;
