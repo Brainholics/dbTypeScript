@@ -9,8 +9,8 @@ app.post("/register", userMiddleware, async (req: Request, res: Response): Promi
     try {
         const userID = (req as any).user.id;
         const email = (req as any).user.email;
-        const { fullName, companyName, phoneNumber, location } = req.body;
-        const user = await createUser(fullName, companyName, phoneNumber, location, userID, email);
+        const { fullName, companyName, phoneNumber, location, currency } = req.body;
+        const user = await createUser(fullName, companyName, phoneNumber, location, userID, email, currency);
 
         if (!user) {
             res.status(400).json({ message: "User already exists" });

@@ -20,6 +20,7 @@ export interface Logs {
     companyName: string;
     phoneNumber: string;
     location: string;
+    currency: string;
     credits: number;
     apikey: string;
     logs: Logs[];

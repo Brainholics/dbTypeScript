@@ -42,6 +42,7 @@ CREATE TABLE "User" (
     "companyName" TEXT,
     "phoneNumber" TEXT,
     "location" TEXT,
+    "currency" TEXT,
     "credits" INTEGER NOT NULL,
     "apikey" TEXT,
 
