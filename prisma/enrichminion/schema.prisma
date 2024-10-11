@@ -24,6 +24,8 @@ model EmailVerificationLogs {
   creditsUsed Int
   status     String
   date       DateTime
+  responseString String?
+  InProgress Boolean?
   user       User    @relation(fields: [userID], references: [UserID])
   breakPoint BreakPoint?
 }
@@ -32,12 +34,9 @@ model EmailVerificationLogs {
 model EnrichmentLogs{
   LogID String @id @unique
   userID String
-  firstName String
-  lastName String
-  email String
-  phoneNumber String
-  currency String
+  Type String
   creditsUsed Int
+  status String
   fileName String
   URL String?
   Date DateTime

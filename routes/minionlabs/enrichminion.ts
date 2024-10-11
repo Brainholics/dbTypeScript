@@ -14,8 +14,8 @@ app.post("/createLog", userMiddleware, async (req: Request, res: Response): Prom
     try {
         const userID = (req as any).user.id;
         const logID = v4();
-        const { firstName, lastName, email, phoneNumber, currency, creditUsed, fileName, date } = req.body;
-        const log = await createLog(logID, userID, firstName, lastName, email, phoneNumber, currency, creditUsed, fileName);
+        const { creditUsed, fileName,url,type } = req.body;
+        const log = await createLog(logID, userID, creditUsed, fileName,type,url);
         if (!log) {
             res.status(404).json({ message: "Log not created" });
             return;

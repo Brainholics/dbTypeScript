@@ -84,3 +84,10 @@ export interface S3UploadResponse {
     Key: string;
     Bucket: string;
   }
+
+  export interface ScanDbResponse {
+    message: string;
+    totalTime: string;
+    data: string[][] | null;
+    totalEnriched: number;
+}

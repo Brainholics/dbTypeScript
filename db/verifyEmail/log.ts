@@ -12,6 +12,7 @@ export async function createLog(
     fileName: string,
     creditsUsed: number,
     emails:number,
+    stat: boolean
 ): Promise<Logs | null> {
     try {
         const log = await prisma.emailVerificationLogs.create({
@@ -23,6 +24,7 @@ export async function createLog(
                 status: "pending",
                 date: new Date(),
                 emails: emails,
+                InProgress: stat
             }
         })
 
@@ -82,6 +84,7 @@ export async function updateLog(
     logID: string, 
     status: string,
     breakPoint: BreakPoint
+    
 ): Promise<Logs | null> {
     try {
         const existingLog = await prisma.emailVerificationLogs.findUnique({
@@ -121,7 +124,59 @@ export async function updateLog(
     }
 }
 
+export async function addJSONStringToLog(logID: string, responseString: string): Promise<Logs | null> {
+    try {
+        const existingLog = await prisma.emailVerificationLogs.findUnique({
+            where: {
+                LogID: logID
+            }
+        });
 
+        if (!existingLog) {
+            return null;
+        }
+
+        const log = await prisma.emailVerificationLogs.update({
+            where: {
+                LogID: logID
+            },
+            data: {
+                responseString: responseString
+            }
+        });
+
+        return log;
+    } catch (error: any) {
+        throw new Error(error.message);
+    }
+}
+
+export async function changeProgressStatus(logID: string , status: boolean): Promise<Logs | null> {
+    try {
+        const existingLog = await prisma.emailVerificationLogs.findUnique({
+            where: {
+                LogID: logID
+            }
+        });
+
+        if (!existingLog) {
+            return null;
+        }
+
+        const log = await prisma.emailVerificationLogs.update({
+            where: {
+                LogID: logID
+            },
+            data: {
+                InProgress: status
+            }
+        });
+
+        return log;
+    } catch (error: any) {
+        throw new Error(error.message);
+    }
+}
 
 //logs getall getone update  admin login change pricing gen api , 
 

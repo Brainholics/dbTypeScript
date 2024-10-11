@@ -8,26 +8,21 @@ import {PrismaClient as EnrichminionDB, EnrichmentLogs as Logs}
 export async function createLog(
    logID: string,
     userID: string,
-    firstName: string,
-    lastName: string,   
-    email: string,
-    phoneNumber: string,
-    currency: string,
     creditUsed: number,
     fileName: string,
+    type: string,
+    url: string,
 ): Promise<Logs | null> {
     try {
         const log = await prisma.enrichmentLogs.create({
             data:{
-                LogID: logID,
+                LogID:logID,
                 userID: userID,
-                fileName: fileName,
                 creditsUsed: creditUsed,
-                firstName: firstName,
-                lastName: lastName,
-                email: email,
-                phoneNumber: phoneNumber,
-                currency: currency,
+                status: "completed",
+                fileName: fileName,
+                URL:url,
+                Type:type,
                 Date: new Date(),
             }
         })

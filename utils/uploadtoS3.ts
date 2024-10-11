@@ -7,6 +7,7 @@ export async function uploadToS3(
     FileName: string,
     Body: string,
     type: string,
+    ContentType: string
 ): Promise<S3UploadResponse | null> {
     return new Promise<S3UploadResponse | null>((resolve, reject) => {
         console.log(FileName)
@@ -15,6 +16,7 @@ export async function uploadToS3(
             Key: FileName,
             Body: Body,
             ACL: type,
+            ContentType:ContentType
         }, (err, data) => {
             if (err) {
                 return resolve(null);

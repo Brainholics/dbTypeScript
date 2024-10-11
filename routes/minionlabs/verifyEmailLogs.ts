@@ -42,7 +42,7 @@ app.post("/getOneLog", verifySessionToken, async (req: Request, res: Response): 
 app.post("/createLog",verifySessionToken, async (req: Request, res: Response): Promise<void> => {
     try {
         const { logID, userID, fileName, creditsUsed, emailsCount } = req.body;
-        const log = await createLog(logID, userID, fileName, creditsUsed, emailsCount);
+        const log = await createLog(logID, userID, fileName, creditsUsed, emailsCount,false);
 
         if (!log) {
             res.status(400).json({ message: "Failed to create log" });
