@@ -422,7 +422,7 @@ app.post("/revokeAPIkey", verifySessionToken, async (req: Request, res: Response
     }
 });
 
-app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
+app.post('/GetEmailResponse',verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
     const userID = (req as any).user.id;
     const startingTime = new Date().getTime();
     try {
@@ -435,7 +435,6 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
 
         const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
         const {responseType, discordUsername, email,mappedOptions,creditsDeducted ,type} = req.body;
-
         const blob = new Blob([file.buffer], { type: file.mimetype });
         const formData = new FormData()
         formData.append('csv', blob, 'data.csv');
@@ -443,11 +442,10 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
         formData.append('discordUsername', discordUsername)
         formData.append('email', email)
         formData.append('mappedOptions', mappedOptions)
-
-        const response = await fetch('https://enrichbackend.dealsinfo.store/api/GetEmailResponse', {
+        const response = await fetch('localhost:5000/api/GetEmailResponse', {
             method: 'POST',
             headers: {
-                "Authorization": `Bearer ${process.env.token}`
+                contentType: 'multipart/form-data',
             },
             body: formData
         });
@@ -510,7 +508,7 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         const response = await fetch('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', {
             method: 'POST',
             headers: {
-                "Authorization": `Bearer ${process.env.token}`
+                contentType: 'multipart/form-data',
             },
             body: formData
         });
@@ -570,10 +568,10 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         formData.append('email', email)
         formData.append('mappedOptions', mappedOptions)
 
-        const response = await fetch('https://enrichbackend.dealsinfo.store/api/GetBothrResponse', {
+        const response = await fetch('https://enrichbackend.dealsinfo.store/api/GetBothResponse', {
             method: 'POST',
             headers: {
-                "Authorization": `Bearer ${process.env.token}`
+                contentType: 'multipart/form-data',
             },
             body: formData
         });
