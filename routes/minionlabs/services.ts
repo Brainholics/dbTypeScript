@@ -1,19 +1,20 @@
+import axios from 'axios';
 import dotenv from 'dotenv';
 import express, { Request, Response } from "express";
-import { existsSync, mkdirSync, readFileSync, writeFile } from "fs";
+import FormData from 'form-data';
+import { createReadStream, existsSync, mkdirSync, readFileSync, writeFile } from "fs";
 import multer from "multer";
 import { Readable } from 'stream';
+import { v4 } from 'uuid';
+import { createLog as EnrichLog } from '../../db/enrichminion/log';
 import { addCredits, removeCredits } from "../../db/enrichminion/user";
-import { createLog, generateAPIkey, getApiKey, revokeAPIkey, updateLog ,getOneLog, changeProgressStatus, addJSONStringToLog} from "../../db/verifyEmail/log";
+import { addJSONStringToLog, changeProgressStatus, createLog, generateAPIkey, getApiKey, getOneLog, revokeAPIkey, updateLog } from "../../db/verifyEmail/log";
 import s3 from "../../db/verifyEmail/s3";
 import verifySessionToken from '../../middleware/enrichminion/supabaseAuth';
 import { BreakPoint, Email, ScanDbResponse, SECONDAPIResponse, SMTPResponse, SMTPStatus } from '../../types/interfaces';
+import { createCSV } from "../../utils/createcsvfromstringarr";
 import { extractEmails } from '../../utils/extractEmails';
 import { uploadToS3 } from '../../utils/uploadtoS3';
-import {createCSV} from "../../utils/createcsvfromstringarr"
-import { createLog as EnrichLog} from '../../db/enrichminion/log';
-import { v4 } from 'uuid';
-
 dotenv.config();
 
 
@@ -176,7 +177,7 @@ app.post("/executeFileJsonInput", verifySessionToken, async (req: Request, res: 
         const data = await response.json() as SMTPResponse;
 
         // create log
-        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount,false);
+        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount, false);
 
         if (!log) {
             res.status(400).json({ message: "Failed to create log" });
@@ -205,7 +206,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             return;
         }
 
-        if(log.InProgress){
+        if (log.InProgress) {
             res.status(200).json({ message: "In progress" });
             return;
         }
@@ -235,7 +236,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             res.status(200).json({ message: "In progress", progress: statusData.progress });
             return;
         }
-        
+
         const updateProgressLog = await changeProgressStatus(logID, true);
         if (!updateProgressLog) {
             res.status(400).json({ message: "Failed to update log" });
@@ -353,7 +354,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
 
         const JSONData = JSON.stringify(data, null, 2);
-       
+
         const updatedLog = await updateLog(logID, "completed", ({
             apicode: 4,
             emails: []
@@ -422,45 +423,53 @@ app.post("/revokeAPIkey", verifySessionToken, async (req: Request, res: Response
     }
 });
 
-app.post('/GetEmailResponse',verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
+app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
     const userID = (req as any).user.id;
     const startingTime = new Date().getTime();
+
     try {
+        // Check if the file is uploaded
         if (!req.file) {
-            res.status(400).json({ error: "No file uploaded" });
-            return;
+            return res.status(400).json({ error: "No file uploaded" });
         }
+
         const file = req.file;
         const csvFileString = file.buffer.toString('utf-8');
 
+        // Upload the file to S3 (Assuming uploadToS3 function is correct)
         const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
-        const {responseType, discordUsername, email,mappedOptions,creditsDeducted ,type} = req.body;
-        const blob = new Blob([file.buffer], { type: file.mimetype });
-        const formData = new FormData()
-        formData.append('csv', blob, 'data.csv');
-        formData.append('responseType', responseType)
-        formData.append('discordUsername', discordUsername)
-        formData.append('email', email)
-        formData.append('mappedOptions', mappedOptions)
-        const response = await fetch('localhost:5000/api/GetEmailResponse', {
-            method: 'POST',
-            headers: {
-                contentType: 'multipart/form-data',
-            },
-            body: formData
-        });
 
-        if (!response.ok) {
-            res.status(500).json({ error: "Failed to send request to Enrich backend" });
-            return;
+        // Extract required fields from the request body
+        const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
+
+
+        const formData = new FormData()
+        formData.append('csv', file.buffer, file.originalname);  // Use file.buffer directly
+        formData.append('discordUsername', discordUsername);
+        formData.append('email', email);
+        formData.append('mappedOptions', mappedOptions);
+
+        // Send the fetch request
+        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
+            headers: {
+                ...formData.getHeaders(),
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+        });
+        // Check if the request was successful
+        if (response.status !== 200) {
+            console.error('Failed to send request to Enrich backend');
+            return res.status(500).json({ error: "Failed to send request to Enrich backend" });
         }
 
-        const data = await response.json() as ScanDbResponse;
+        // Parse the response from the external API
+        const data = await response.data as ScanDbResponse;
         const creditCost = process.env.EnrichCost as unknown as number;
         let creditsUsed = data.totalEnriched * creditCost
         if (creditsDeducted > creditsUsed) {
             const refundCredits = creditsDeducted - creditsUsed;
-            const refund = await addCredits(refundCredits,userID);
+            const refund = await addCredits(refundCredits, userID);
             if (!refund) {
                 res.status(500).json({ error: "Failed to refund credits" });
                 return;
@@ -471,7 +480,7 @@ app.post('/GetEmailResponse',verifySessionToken, upload.single('csv'), async (re
         const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString('utf-8') : "File not found";
         const uploadS3Enriched = await uploadToS3('enrich-output', fileName, fileContent, "public", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID,userID,creditsUsed,fileName,type,uploadS3Enriched?.Location as string); 
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, uploadS3Enriched?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -495,35 +504,36 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         const csvFileString = file.buffer.toString('utf-8');
 
         const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
-        const {responseType, discordUsername, email,mappedOptions,creditsDeducted ,type} = req.body;
+        const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
-        const blob = new Blob([file.buffer], { type: file.mimetype });
+
         const formData = new FormData()
-        formData.append('csv', blob, 'data.csv');
-        formData.append('responseType', responseType)
-        formData.append('discordUsername', discordUsername)
-        formData.append('email', email)
-        formData.append('mappedOptions', mappedOptions)
+        formData.append('csv', file.buffer, file.originalname);  // Use file.buffer directly
+        formData.append('discordUsername', discordUsername);
+        formData.append('email', email);
+        formData.append('mappedOptions', mappedOptions);
 
-        const response = await fetch('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', {
-            method: 'POST',
+        // Send the fetch request
+        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
             headers: {
-                contentType: 'multipart/form-data',
+                ...formData.getHeaders(),
             },
-            body: formData
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
         });
-
-        if (!response.ok) {
-            res.status(500).json({ error: "Failed to send request to Enrich backend" });
-            return;
+        // Check if the request was successful
+        if (response.status !== 200) {
+            console.error('Failed to send request to Enrich backend');
+            return res.status(500).json({ error: "Failed to send request to Enrich backend" });
         }
 
-        const data = await response.json() as ScanDbResponse;
+        // Parse the response from the external API
+        const data = await response.data as ScanDbResponse;
         const creditCost = process.env.EnrichCost as unknown as number;
         let creditsUsed = data.totalEnriched * creditCost
         if (creditsDeducted > creditsUsed) {
             const refundCredits = creditsDeducted - creditsUsed;
-            const refund = await addCredits(refundCredits,userID);
+            const refund = await addCredits(refundCredits, userID);
             if (!refund) {
                 res.status(500).json({ error: "Failed to refund credits" });
                 return;
@@ -534,7 +544,7 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString('utf-8') : "File not found";
         const uploadS3Enriched = await uploadToS3('enrich-output', fileName, fileContent, "public", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID,userID,creditsUsed,fileName,type,uploadS3Enriched?.Location as string); 
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, uploadS3Enriched?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -558,35 +568,36 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         const csvFileString = file.buffer.toString('utf-8');
 
         const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
-        const {responseType, discordUsername, email,mappedOptions,creditsDeducted ,type} = req.body;
+        const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
-        const blob = new Blob([file.buffer], { type: file.mimetype });
+
         const formData = new FormData()
-        formData.append('csv', blob, 'data.csv');
-        formData.append('responseType', responseType)
-        formData.append('discordUsername', discordUsername)
-        formData.append('email', email)
-        formData.append('mappedOptions', mappedOptions)
+        formData.append('csv', file.buffer, file.originalname);  // Use file.buffer directly
+        formData.append('discordUsername', discordUsername);
+        formData.append('email', email);
+        formData.append('mappedOptions', mappedOptions);
 
-        const response = await fetch('https://enrichbackend.dealsinfo.store/api/GetBothResponse', {
-            method: 'POST',
+        // Send the fetch request
+        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
             headers: {
-                contentType: 'multipart/form-data',
+                ...formData.getHeaders(),
             },
-            body: formData
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
         });
-
-        if (!response.ok) {
-            res.status(500).json({ error: "Failed to send request to Enrich backend" });
-            return;
+        // Check if the request was successful
+        if (response.status !== 200) {
+            console.error('Failed to send request to Enrich backend');
+            return res.status(500).json({ error: "Failed to send request to Enrich backend" });
         }
 
-        const data = await response.json() as ScanDbResponse;
+        // Parse the response from the external API
+        const data = await response.data as ScanDbResponse;
         const creditCost = process.env.EnrichCost as unknown as number;
         let creditsUsed = data.totalEnriched * creditCost
         if (creditsDeducted > creditsUsed) {
             const refundCredits = creditsDeducted - creditsUsed;
-            const refund = await addCredits(refundCredits,userID);
+            const refund = await addCredits(refundCredits, userID);
             if (!refund) {
                 res.status(500).json({ error: "Failed to refund credits" });
                 return;
@@ -597,7 +608,7 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString('utf-8') : "File not found";
         const uploadS3Enriched = await uploadToS3('enrich-output', fileName, fileContent, "public", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID,userID,creditsUsed,fileName,type,uploadS3Enriched?.Location as string); 
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, uploadS3Enriched?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
