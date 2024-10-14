@@ -10,22 +10,22 @@ const app = express.Router();
 
 // CREATE LOG
 
-app.post("/createLog", userMiddleware, async (req: Request, res: Response): Promise<void> => {
-    try {
-        const userID = (req as any).user.id;
-        const logID = v4();
-        const { creditUsed, fileName,url,type } = req.body;
-        const log = await createLog(logID, userID, creditUsed, fileName,type,url);
-        if (!log) {
-            res.status(404).json({ message: "Log not created" });
-            return;
-        }
+// app.post("/createLog", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+//     try {
+//         const userID = (req as any).user.id;
+//         const logID = v4();
+//         const { creditUsed, fileName,url,type } = req.body;
+//         const log = await createLog(logID, userID, creditUsed, fileName,type,url);
+//         if (!log) {
+//             res.status(404).json({ message: "Log not created" });
+//             return;
+//         }
 
-        res.status(201).json({ message: "Log created" });
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
-})
+//         res.status(201).json({ message: "Log created" });
+//     } catch (error: any) {
+//         res.status(500).json({ message: error.message });
+//     }
+// })
 
 // Get LOGS
 app.get("/getUserLogs", userMiddleware, async (req: Request, res: Response): Promise<void> => {

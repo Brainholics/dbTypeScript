@@ -131,7 +131,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, async (req: Request, res: Res
             Bucket: "verify",
             Key: fileName,
             Body: JSONData,
-            ACL: "private",
+            ACL: "public-read",
         }
         const uploadResult = await s3.upload(inputParams).promise();
 
@@ -191,10 +191,14 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             res.status(400).json({ message: "Log ID not found" });
             return;
         }
-
+        
         const log = await getOneLog(logID);
         if (!log) {
             res.status(400).json({ message: "Log not found" });
+            return;
+        }
+        if(log.status === "completed"){
+            res.status(200).json({ message: "Completed", "log": log });
             return;
         }
 
@@ -241,7 +245,6 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
         }
 
         for (const email of statusData.emails) {
-            console.log(email);
             if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
                 if (email.provider === "googleworkspace") {
                     googleWorkspaceEmails.push(email);

@@ -199,10 +199,14 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             res.status(400).json({ message: "Log ID not found" });
             return;
         }
-
+        
         const log = await getOneLog(logID);
         if (!log) {
             res.status(400).json({ message: "Log not found" });
+            return;
+        }
+        if(log.status === "completed"){
+            res.status(200).json({ message: "Completed", "log": log });
             return;
         }
 
@@ -249,7 +253,6 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
         }
 
         for (const email of statusData.emails) {
-            console.log(email);
             if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
                 if (email.provider === "googleworkspace") {
                     googleWorkspaceEmails.push(email);
@@ -359,12 +362,13 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             apicode: 4,
             emails: []
         } as BreakPoint))
+        console.log({"status at 333":updatedLog});
         if (!updatedLog) {
             res.status(400).json({ message: "Failed to update log at Done" });
             return;
         }
 
-        const addJSONstring = await addJSONStringToLog(logID, JSONData,validEmails.length,invalidEmails.length,UnknownEmails.length,catchAllValidEmails.length);
+        const addJSONstring = await addJSONStringToLog(logID, JSONData, validEmails.length, invalidEmails.length, UnknownEmails.length, catchAllValidEmails.length);;
         if (!addJSONstring) {
             res.status(400).json({ message: "Failed to add JSON data to log" });
             return;
@@ -423,7 +427,7 @@ app.post("/revokeAPIkey", verifySessionToken, async (req: Request, res: Response
     }
 });
 
-app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
+app.post('/GetEmailResponse', verifySessionToken,upload.single('csv'), async (req: Request, res: Response) => {
     const userID = (req as any).user.id;
     const startingTime = new Date().getTime();
 
@@ -437,7 +441,7 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
         const csvFileString = file.buffer.toString('utf-8');
 
         // Upload the file to S3 (Assuming uploadToS3 function is correct)
-        const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
+        const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "public-read", "text/csv");
 
         // Extract required fields from the request body
         const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
@@ -475,17 +479,18 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
                 return;
             }
         }
-        const fileName = `${userID}-${email}-${startingTime}-Enriched-Emails.csv`;
+        const fileName = `${email}-${startingTime}-Enriched-Emails.csv`;
         const filepath = createCSV(data.data as string[][], fileName);
-        const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString('utf-8') : "File not found";
-        const uploadS3Enriched = await uploadToS3('enrich-output', fileName, fileContent, "public", "text/csv");
+        const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString() : "File not found";
+        // console.log(fileContent)
+        const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, uploadS3Enriched?.Location as string);
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string,uploadS3?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
         }
-        res.status(200).json({ log });
+        res.status(200).json({ data });
     } catch (err: any) {
         const totalTime = (new Date().getTime() - startingTime) / 1000;
         res.status(500).json({ error: err.message, "total time": `${totalTime} seconds` });
@@ -541,10 +546,11 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         }
         const fileName = `${userID}-${email}-${startingTime}-Enriched-PhoneNumber.csv`;
         const filepath = createCSV(data.data as string[][], fileName);
-        const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString('utf-8') : "File not found";
-        const uploadS3Enriched = await uploadToS3('enrich-output', fileName, fileContent, "public", "text/csv");
+        const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString() : "File not found";
+        // console.log(fileContent)
+        const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, uploadS3Enriched?.Location as string);
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string,uploadS3?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -605,10 +611,11 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         }
         const fileName = `${userID}-${email}-${startingTime}-Enriched-Both.csv`;
         const filepath = createCSV(data.data as string[][], fileName);
-        const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString('utf-8') : "File not found";
-        const uploadS3Enriched = await uploadToS3('enrich-output', fileName, fileContent, "public", "text/csv");
+        const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString() : "File not found";
+        // console.log(fileContent)
+        const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, uploadS3Enriched?.Location as string);
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string,uploadS3?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;

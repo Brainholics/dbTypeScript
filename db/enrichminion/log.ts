@@ -12,6 +12,7 @@ export async function createLog(
     fileName: string,
     type: string,
     url: string,
+    uploadedFile : string
 ): Promise<Logs | null> {
     try {
         const log = await prisma.enrichmentLogs.create({
@@ -23,6 +24,7 @@ export async function createLog(
                 fileName: fileName,
                 URL:url,
                 Type:type,
+                UploadedFile: uploadedFile,
                 Date: new Date(),
             }
         })
