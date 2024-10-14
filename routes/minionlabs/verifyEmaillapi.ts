@@ -3,7 +3,7 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import { Readable } from 'stream';
 import { removeCredits } from "../../db/enrichminion/user";
-import { addJSONStringToLog, createLog, updateLog ,getOneLog, changeProgressStatus} from "../../db/verifyEmail/log";
+import { addJSONStringToLog, changeProgressStatus, createLog, getOneLog, updateLog } from "../../db/verifyEmail/log";
 import s3 from "../../db/verifyEmail/s3";
 import verifyAuthToken from "../../middleware/enrichminion/apiAuth";
 import { BreakPoint, Email, SECONDAPIResponse, SMTPResponse, SMTPStatus } from '../../types/interfaces';
@@ -169,7 +169,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, async (req: Request, res: Res
         const data = await response.json() as SMTPResponse;
 
         // create log
-        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount,false);
+        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount, false);
 
         if (!log) {
             res.status(400).json({ message: "Failed to create log" });
@@ -198,7 +198,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             return;
         }
 
-        if(log.InProgress){
+        if (log.InProgress) {
             res.status(200).json({ message: "In progress" });
             return;
         }
@@ -228,7 +228,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             res.status(200).json({ message: "In progress", progress: statusData.progress });
             return;
         }
-        
+
         const updateProgressLog = await changeProgressStatus(logID, true);
         if (!updateProgressLog) {
             res.status(400).json({ message: "Failed to update log" });
@@ -346,7 +346,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
 
 
         const JSONData = JSON.stringify(data, null, 2);
-       
+
         const updatedLog = await updateLog(logID, "completed", ({
             apicode: 4,
             emails: []
@@ -356,7 +356,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             return;
         }
 
-        const addJSONstring = await addJSONStringToLog(logID, JSONData);
+        const addJSONstring = await addJSONStringToLog(logID, JSONData, validEmails.length, invalidEmails.length, UnknownEmails.length, catchAllValidEmails.length);;
         if (!addJSONstring) {
             res.status(400).json({ message: "Failed to add JSON data to log" });
             return;

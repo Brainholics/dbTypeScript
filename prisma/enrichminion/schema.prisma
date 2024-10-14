@@ -26,6 +26,10 @@ model EmailVerificationLogs {
   date       DateTime
   responseString String?
   InProgress Boolean?
+  ValidEmails Int?
+  catchAllEmails Int?
+  InvalidEmails Int?
+  UnknownEmails Int?
   user       User    @relation(fields: [userID], references: [UserID])
   breakPoint BreakPoint?
 }

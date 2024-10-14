@@ -124,7 +124,14 @@ export async function updateLog(
     }
 }
 
-export async function addJSONStringToLog(logID: string, responseString: string): Promise<Logs | null> {
+export async function addJSONStringToLog(
+    logID: string,
+    responseString: string,
+    validLength: number,
+    invalidLength: number,
+    unknownLength: number,
+    catchAllLength: number,
+): Promise<Logs | null> {
     try {
         const existingLog = await prisma.emailVerificationLogs.findUnique({
             where: {
@@ -141,7 +148,11 @@ export async function addJSONStringToLog(logID: string, responseString: string):
                 LogID: logID
             },
             data: {
-                responseString: responseString
+                responseString: responseString,
+                InvalidEmails: invalidLength,
+                ValidEmails: validLength,   
+                UnknownEmails: unknownLength,
+                catchAllEmails: catchAllLength
             }
         });
 

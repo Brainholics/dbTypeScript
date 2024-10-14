@@ -364,7 +364,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             return;
         }
 
-        const addJSONstring = await addJSONStringToLog(logID, JSONData);
+        const addJSONstring = await addJSONStringToLog(logID, JSONData,validEmails.length,invalidEmails.length,UnknownEmails.length,catchAllValidEmails.length);
         if (!addJSONstring) {
             res.status(400).json({ message: "Failed to add JSON data to log" });
             return;
