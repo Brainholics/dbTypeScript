@@ -8,6 +8,7 @@ import adminVerification from "../../middleware/enrichminion/adminAuth";
 import { getLogsByUserID as verifyEmailUserLogs} from "../../db/verifyEmail/admin";
 
 import { getAllLogs as verifyEmailAllLogs , getOneLog as verifyEmailLog} from "../../db/verifyEmail/log";
+import { getAllInvoices, getInvoiceByBillingID } from "../../db/verifyEmail/billing";
 const app = express.Router();
 
 interface LoginRequest extends Request {
@@ -466,6 +467,45 @@ app.get("/getRegistrationCredits", adminVerification, async (req: Request, res: 
         res.status(404).json({ "error": error.message });
     }
 });
+
+app.get("/getAllBills", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const data = await getAllInvoices();
+        if (!data) {
+            throw new Error("no bills found");
+        }
+        res.status(200).json({ data });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+})
+
+app.post("/getBillsByUser", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { userID } = req.body;
+        const data = await getAllLogsByUserID(userID);
+        if (!data) {
+            throw new Error("no bills found");
+        }
+        res.status(200).json({ data });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+})
+
+app.post("/getBill", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { billingID } = req.body;
+        const data = await getInvoiceByBillingID(billingID);
+        if (!data) {
+            throw new Error("no bill found");
+        }
+        res.status(200).json({ data });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+})
+
 
 
 

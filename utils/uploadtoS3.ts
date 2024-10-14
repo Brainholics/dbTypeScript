@@ -8,10 +8,6 @@ export async function uploadToS3(
     ContentType: string
 ): Promise<any | null> {
     return new Promise<any | null>((resolve, reject) => {
-        // console.log(FileName)
-        // console.log(Body)
-        // console.log(type)
-        // console.log(ContentType)
         console.log(bucketName)
         s3.upload({
             Bucket: bucketName,
@@ -24,7 +20,6 @@ export async function uploadToS3(
                 console.log(err)
                 return resolve(null);
             }
-            console.log(data)
 
             return resolve(data);
         });
