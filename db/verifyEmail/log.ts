@@ -12,7 +12,8 @@ export async function createLog(
     fileName: string,
     creditsUsed: number,
     emails:number,
-    stat: boolean
+    stat: boolean,
+    url: string
 ): Promise<Logs | null> {
     try {
         const log = await prisma.emailVerificationLogs.create({
@@ -24,7 +25,8 @@ export async function createLog(
                 status: "pending",
                 date: new Date(),
                 emails: emails,
-                InProgress: stat
+                InProgress: stat,
+                url: url
             }
         })
 

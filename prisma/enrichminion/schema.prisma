@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output = "./generated"
+  output   = "./generated"
 }
 
 datasource db {
@@ -10,69 +10,69 @@ datasource db {
 }
 
 model BreakPoint {
-  LogID        String @unique
-  ApiCode      Int
-  Emails       String[]
-  log          EmailVerificationLogs @relation(fields: [LogID], references: [LogID])
+  LogID   String                @unique
+  ApiCode Int
+  Emails  String[]
+  log     EmailVerificationLogs @relation(fields: [LogID], references: [LogID])
 }
 
 model EmailVerificationLogs {
-  LogID      String  @id @unique
-  userID     String
-  fileName   String
-  emails     Int
-  creditsUsed Int
-  status     String
-  date       DateTime
+  LogID          String      @id @unique
+  userID         String
+  fileName       String
+  emails         Int
+  creditsUsed    Int
+  status         String
+  date           DateTime
   responseString String?
-  InProgress Boolean?
-  ValidEmails Int?
+  InProgress     Boolean?
+  ValidEmails    Int?
+  url            String?
   catchAllEmails Int?
-  InvalidEmails Int?
-  UnknownEmails Int?
-  user       User    @relation(fields: [userID], references: [UserID])
-  breakPoint BreakPoint?
+  InvalidEmails  Int?
+  UnknownEmails  Int?
+  user           User        @relation(fields: [userID], references: [UserID])
+  breakPoint     BreakPoint?
 }
 
-
-model EnrichmentLogs{
-  LogID String @id @unique
-  userID String
-  Type String
-  creditsUsed Int
-  status String
-  fileName String
-  URL String?
+model EnrichmentLogs {
+  LogID        String   @id @unique
+  userID       String
+  Type         String
+  creditsUsed  Int
+  status       String
+  fileName     String
+  URL          String?
   UploadedFile String?
-  Date DateTime
-  user User @relation(fields: [userID], references: [UserID])
+  Date         DateTime
+  user         User     @relation(fields: [userID], references: [UserID])
 }
 
-model BillingDetails{
-  BillingID String @id @unique
-  userID String
-  Url String
+model BillingDetails {
+  BillingID   String   @id @unique
+  userID      String
+  Url         String
   ServiceName String
-  date DateTime
-  user User @relation(fields: [userID], references: [UserID])
+  date        DateTime
+  user        User     @relation(fields: [userID], references: [UserID])
 }
 
 model User {
-    UserID String @id @unique
-    name String
-    email String
-    companyName String?
-    phoneNumber String?
-    location String?
-    currency String?
-    credits Int
-    apikey String?  @unique
-    enrichmeantLogs EnrichmentLogs[]
-    emailVerificationLogs EmailVerificationLogs[]
-    billingDetails BillingDetails[]
+  UserID                String                  @id @unique
+  name                  String
+  email                 String
+  companyName           String?
+  phoneNumber           String?
+  location              String?
+  currency              String?
+  credits               Int
+  apikey                String?                 @unique
+  enrichmeantLogs       EnrichmentLogs[]
+  emailVerificationLogs EmailVerificationLogs[]
+  billingDetails        BillingDetails[]
 }
 
-model Admin{
-  email String @id @unique
+model Admin {
+  email    String @id @unique
   password String
 }
