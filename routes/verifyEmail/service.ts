@@ -37,7 +37,7 @@ app.post("/executeFile", verifySessionToken, upload.single('file'), async (req: 
             Bucket: "verify",
             Key: fileName,
             Body: file.buffer,
-            ACL: "private",
+            ACL: "public-read",
         }
         const uploadResult = await s3.upload(inputParams).promise();
 

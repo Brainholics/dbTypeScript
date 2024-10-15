@@ -35,7 +35,7 @@ const upload = multer({ storage });
 //             Bucket: "verify",
 //             Key: fileName,
 //             Body: file.buffer,
-//             ACL: "private",
+//             ACL: "public-read",
 //         }
 //         const uploadResult = await s3.upload(inputParams).promise();
 
@@ -106,7 +106,7 @@ const upload = multer({ storage });
 //     }
 // });
 
-app.post("/executeFileJsonInput", verifyAuthToken,upload.single("json"), async (req: Request, res: Response): Promise<void> => {
+app.post("/executeFileJsonInput", verifyAuthToken, upload.single("json"), async (req: Request, res: Response): Promise<void> => {
     try {
         const userID = (req as any).user.UserID;
         const email = (req as any).user.email;
@@ -114,7 +114,7 @@ app.post("/executeFileJsonInput", verifyAuthToken,upload.single("json"), async (
         if (!req.file) {
             res.status(400).json({ message: "File not found" });
             return;
-        }   
+        }
         const file = req.file;
         const fileData = JSON.parse(file.buffer.toString('utf-8'));
         const emails = fileData.emails;
@@ -154,7 +154,7 @@ app.post("/executeFileJsonInput", verifyAuthToken,upload.single("json"), async (
 
         if (!response.ok) {
             res.status(400).json({ message: "Failed to send emails to SMTP server" });
-            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount, false,uploadResult.Location);
+            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
             if (!log) {
                 res.status(400).json({ message: "Failed to create log" });
                 return;
@@ -174,7 +174,7 @@ app.post("/executeFileJsonInput", verifyAuthToken,upload.single("json"), async (
         const data = await response.json() as SMTPResponse;
 
         // create log
-        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount, false,uploadResult.Location);
+        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
 
         if (!log) {
             res.status(400).json({ message: "Failed to create log" });
@@ -196,13 +196,13 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             res.status(400).json({ message: "Log ID not found" });
             return;
         }
-        
+
         const log = await getOneLog(logID);
         if (!log) {
             res.status(400).json({ message: "Log not found" });
             return;
         }
-        if(log.status === "completed"){
+        if (log.status === "completed") {
             res.status(200).json({ message: "Completed", "log": log });
             return;
         }
@@ -354,7 +354,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
 
         const uploadedJsonData = await uploadedJson.json();
 
-        console.log({uploadedJsonData: uploadedJsonData});
+        console.log({ uploadedJsonData: uploadedJsonData });
 
         // Create JSON object
         const data = {
@@ -365,7 +365,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             UnknownEmails: UnknownEmails.map((email) => email.email)
         };
 
-        console.log({data: data});
+        console.log({ data: data });
 
 
         const JSONData = JSON.stringify(data, null, 2);

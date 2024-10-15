@@ -42,7 +42,7 @@ const upload = multer({ storage });
 //             Bucket: "verify",
 //             Key: fileName,
 //             Body: file.buffer,
-//             ACL: "private",
+//             ACL: "public-read",
 //         }
 //         const uploadResult = await s3.upload(inputParams).promise();
 
@@ -113,7 +113,7 @@ const upload = multer({ storage });
 //     }
 // });
 
-app.post("/executeFileJsonInput", verifySessionToken,upload.single("json"), async (req: Request, res: Response): Promise<void> => {
+app.post("/executeFileJsonInput", verifySessionToken, upload.single("json"), async (req: Request, res: Response): Promise<void> => {
     try {
         const userID = (req as any).user.id;
         const email = (req as any).user.email;
@@ -122,7 +122,7 @@ app.post("/executeFileJsonInput", verifySessionToken,upload.single("json"), asyn
         if (!req.file) {
             res.status(400).json({ message: "File not found" });
             return;
-        }   
+        }
         const file = req.file;
         const fileData = JSON.parse(file.buffer.toString('utf-8'));
         const emails = fileData.emails;
@@ -162,7 +162,7 @@ app.post("/executeFileJsonInput", verifySessionToken,upload.single("json"), asyn
 
         if (!response.ok) {
             res.status(400).json({ message: "Failed to send emails to SMTP server" });
-            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount, false,uploadResult.Location);
+            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
             if (!log) {
                 res.status(400).json({ message: "Failed to create log" });
                 return;
@@ -182,7 +182,7 @@ app.post("/executeFileJsonInput", verifySessionToken,upload.single("json"), asyn
         const data = await response.json() as SMTPResponse;
 
         // create log
-        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount, false,uploadResult.Location);
+        const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
 
         if (!log) {
             res.status(400).json({ message: "Failed to create log" });
@@ -204,13 +204,13 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             res.status(400).json({ message: "Log ID not found" });
             return;
         }
-        
+
         const log = await getOneLog(logID);
         if (!log) {
             res.status(400).json({ message: "Log not found" });
             return;
         }
-        if(log.status === "completed"){
+        if (log.status === "completed") {
             res.status(200).json({ message: "Completed", "log": log });
             return;
         }
@@ -362,7 +362,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         const uploadedJsonData = await uploadedJson.json();
 
-        console.log({uploadedJsonData: uploadedJsonData});
+        console.log({ uploadedJsonData: uploadedJsonData });
 
         // Create JSON object
         const data = {
@@ -373,7 +373,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             UnknownEmails: UnknownEmails.map((email) => email.email)
         };
 
-        console.log({data: data});
+        console.log({ data: data });
 
 
         const JSONData = JSON.stringify(data, null, 2);
@@ -446,7 +446,7 @@ app.post("/revokeAPIkey", verifySessionToken, async (req: Request, res: Response
     }
 });
 
-app.post('/GetEmailResponse', verifySessionToken,upload.single('csv'), async (req: Request, res: Response) => {
+app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
     const userID = (req as any).user.id;
     const startingTime = new Date().getTime();
 
@@ -504,7 +504,7 @@ app.post('/GetEmailResponse', verifySessionToken,upload.single('csv'), async (re
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string,uploadS3?.Location as string);
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string, uploadS3?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -527,7 +527,7 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         const file = req.file;
         const csvFileString = file.buffer.toString('utf-8');
 
-        const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
+        const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "public-read", "text/csv");
         const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
 
@@ -569,7 +569,7 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string,uploadS3?.Location as string);
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string, uploadS3?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -592,7 +592,7 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         const file = req.file;
         const csvFileString = file.buffer.toString('utf-8');
 
-        const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "private", "text/csv");
+        const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "public-read", "text/csv");
         const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
 
@@ -634,7 +634,7 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string,uploadS3?.Location as string);
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string, uploadS3?.Location as string);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
