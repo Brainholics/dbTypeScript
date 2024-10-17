@@ -129,3 +129,16 @@ export async function revokeAPIkey(userID: string) {
 
     return data;
 }
+
+export async function updateLogIDAtAdmin(logID: string) {
+    const data = await prisma.emailVerificationLogs.update({
+        where: {
+            LogID: logID
+        },
+        data: {
+            LogID: logID,
+        }
+    });
+
+    return data;
+}

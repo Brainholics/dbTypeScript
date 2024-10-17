@@ -236,3 +236,16 @@ export async function revokeAPIkey(userID: string) {
 
     return data;
 }
+
+export async function getBreakPoint(logID: string) {
+    const data = await prisma.emailVerificationLogs.findUnique({
+        where: {
+            LogID: logID
+        },
+        select: {
+            breakPoint: true
+        }
+    });
+
+    return data?.breakPoint;
+}   

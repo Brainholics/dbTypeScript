@@ -1,14 +1,16 @@
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
 import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getUserById, revokeAPIkey, updateCredits } from "../../db/enrichminion/admin";
+import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
 import adminVerification from "../../middleware/enrichminion/adminAuth";
 
-import { getLogsByUserID as verifyEmailUserLogs} from "../../db/verifyEmail/admin";
+import { getLogsByUserID as verifyEmailUserLogs , updateLogIDAtAdmin as verifyUpdateLogAtAdmin} from "../../db/verifyEmail/admin";
 
-import { getAllLogs as verifyEmailAllLogs , getOneLog as verifyEmailLog} from "../../db/verifyEmail/log";
 import { getAllInvoices, getInvoiceByBillingID } from "../../db/verifyEmail/billing";
+import { getBreakPoint, getAllLogs as verifyEmailAllLogs, getOneLog as verifyEmailLog, updateLog as verifyUpdateLog } from "../../db/verifyEmail/log";
+import { removeCredits } from "../../db/enrichminion/user";
+import { BreakPoint, SMTPResponse } from "../../types/interfaces";
 const app = express.Router();
 
 interface LoginRequest extends Request {
@@ -314,8 +316,8 @@ app.get("/getAllVerifyEmailLogsById", adminVerification, async (req: Request, re
 
 app.get("/getAllVerifyEmailLogs", adminVerification, async (req: Request, res: Response) => {  //TESTED
     try {
-        const data = await verifyEmailAllLogs() 
-        if (!data) {    
+        const data = await verifyEmailAllLogs()
+        if (!data) {
             throw new Error("failed to find logs");
         }
         res.status(200).json({ data });
@@ -440,7 +442,7 @@ app.get("/getCreditCost", adminVerification, async (req: Request, res: Response)
         if (!process.env.CreditPrice) {
             throw new Error("no price set");
         }
-        res.status(200).json({ "resp": process.env.CreditPrice});
+        res.status(200).json({ "resp": process.env.CreditPrice });
     } catch (error: any) {
         res.status(404).json({ "error": error.message });
     }
@@ -462,7 +464,7 @@ app.get("/getRegistrationCredits", adminVerification, async (req: Request, res: 
         if (!process.env.RegistrationCredits) {
             throw new Error("no price set");
         }
-        res.status(200).json({ "resp": process.env.RegistrationCredits});
+        res.status(200).json({ "resp": process.env.RegistrationCredits });
     } catch (error: any) {
         res.status(404).json({ "error": error.message });
     }
@@ -505,6 +507,76 @@ app.post("/getBill", adminVerification, async (req: Request, res: Response) => {
         res.status(404).json({ "error": error.message });
     }
 })
+
+app.post("/runFrom1BreakPoint", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { logID } = req.body;
+        const log = await verifyEmailLog(logID);
+        if (!log) {
+            throw new Error("log not found");
+        }
+
+        if (log.status !== "1") {
+            throw new Error("log is not at breakpoint 1");
+        }
+
+        const breakPoint = await getBreakPoint(logID);
+        if (!breakPoint) {
+            throw new Error("breakpoint not found");
+        }
+
+        const emails = breakPoint.Emails;
+
+        const emailsCount = emails.length;
+        const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
+        // deduct credits 
+        const credits = await removeCredits(creditsUsed, log.userID);
+        if (!credits) {
+            res.status(400).json({ message: "Insufficient credits" });
+            return;
+        }
+
+        // send request to SMTP ENDPOINT
+        const response = await fetch(process.env.SMTPENDPOINT as string, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                emails: emails,
+            }),
+            redirect: "follow",
+        })
+
+        if (!response.ok) {
+            res.status(400).json({ message: "Failed to send emails to SMTP server" });
+
+            const updatedLog = await verifyUpdateLog(log.LogID, "1", ({
+                apicode: 1,
+                emails: emails
+            } as BreakPoint));
+            if (!updatedLog) {
+                res.status(400).json({ message: "Failed to update log at First server failure" });
+                return;
+            }
+            return;
+        }
+
+        const data = await response.json() as SMTPResponse;
+
+        const updatedLog = await verifyUpdateLogAtAdmin(data.id);
+        if (!updatedLog) {
+            res.status(400).json({ message: "Failed to update log at admin" });
+            return;
+        }
+
+        res.status(200).json({ message: "File uploaded successfully", updatedLog });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
+
 
 
 

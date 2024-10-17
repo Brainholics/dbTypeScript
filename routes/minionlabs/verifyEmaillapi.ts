@@ -160,7 +160,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, upload.single("json"), async 
                 return;
             }
 
-            const updatedLog = await updateLog(log.LogID, "failed at 1", ({
+            const updatedLog = await updateLog(log.LogID, "1", ({
                 apicode: 1,
                 emails: emails
             } as BreakPoint));
@@ -278,7 +278,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
 
             if (!response.ok) {
                 const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
-                const updatedLog = await updateLog(logID, "failed at outlook server", ({
+                const updatedLog = await updateLog(logID, "2", ({
                     apicode: 2,
                     emails: pendingEmails.map((email) => email.email)
                 } as BreakPoint))
@@ -317,7 +317,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             });
 
             if (!response.ok) {
-                const updatedLog = await updateLog(logID, "failed at Gsuite", ({
+                const updatedLog = await updateLog(logID, "3", ({
                     apicode: 3,
                     emails: googleWorkspaceEmails.map((email) => email.email)
                 } as BreakPoint))
