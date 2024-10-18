@@ -277,7 +277,8 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             })
 
             if (!response.ok) {
-                const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
+                //adding {email:"GoogleWorkSpaceStart"} to the emails array to send emails to google workspace server Because lazy do not want to change DB schema 
+                const pendingEmails = [...restEmails, { email: "GoogleWorkSpaceStart" } as Email, ...googleWorkspaceEmails];
                 const updatedLog = await updateLog(logID, "2", ({
                     apicode: 2,
                     emails: pendingEmails.map((email) => email.email)
@@ -372,7 +373,9 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
 
         const updatedLog = await updateLog(logID, "completed", ({
             apicode: 4,
-            emails: []
+            emails: [],
+            providers: [],
+            statuses: []
         } as BreakPoint))
         if (!updatedLog) {
             res.status(400).json({ message: "Failed to update log at Done" });

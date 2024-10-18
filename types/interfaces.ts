@@ -1,8 +1,16 @@
 export interface BreakPoint {
     apicode: number;
     emails: string[];
+    providers: string[];
+    statuses: string[]; 
 }
 
+export interface EmailSingleDB {
+    email: string;
+    Provider: string;
+    BreakPointBreakPointID: string;
+    status: string;
+}
 export interface SMTPResponse {
     id: string;
     name: string;

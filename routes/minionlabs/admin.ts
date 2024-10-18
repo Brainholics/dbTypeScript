@@ -5,12 +5,12 @@ import { adminLogin, generateAPIkey, getAllApikeys, getAllUsers, getApiKey, getU
 import { deleteLog, getAllLogs, getAllLogsByUserID, getOneLog } from "../../db/enrichminion/log";
 import adminVerification from "../../middleware/enrichminion/adminAuth";
 
-import { getLogsByUserID as verifyEmailUserLogs , updateLogIDAtAdmin as verifyUpdateLogAtAdmin} from "../../db/verifyEmail/admin";
+import { getLogsByUserID as verifyEmailUserLogs, updateLogIDAtAdmin as verifyUpdateLogAtAdmin } from "../../db/verifyEmail/admin";
 
-import { getAllInvoices, getInvoiceByBillingID } from "../../db/verifyEmail/billing";
-import { getBreakPoint, getAllLogs as verifyEmailAllLogs, getOneLog as verifyEmailLog, updateLog as verifyUpdateLog } from "../../db/verifyEmail/log";
 import { removeCredits } from "../../db/enrichminion/user";
-import { BreakPoint, SMTPResponse } from "../../types/interfaces";
+import { getAllInvoices, getInvoiceByBillingID } from "../../db/verifyEmail/billing";
+import { addJSONStringToLog, changeProgressStatus, getBreakPoint, getEmailsFromBreakPoint, getAllLogs as verifyEmailAllLogs, getOneLog as verifyEmailLog, updateLog as verifyUpdateLog } from "../../db/verifyEmail/log";
+import { BreakPoint, Email, EmailSingleDB, SECONDAPIResponse, SMTPResponse, SMTPStatus } from "../../types/interfaces";
 const app = express.Router();
 
 interface LoginRequest extends Request {
@@ -525,16 +525,8 @@ app.post("/runFrom1BreakPoint", adminVerification, async (req: Request, res: Res
             throw new Error("breakpoint not found");
         }
 
-        const emails = breakPoint.Emails;
-
-        const emailsCount = emails.length;
-        const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
-        // deduct credits 
-        const credits = await removeCredits(creditsUsed, log.userID);
-        if (!credits) {
-            res.status(400).json({ message: "Insufficient credits" });
-            return;
-        }
+        const emailsData = await getEmailsFromBreakPoint(breakPoint.BreakPointID);
+        const emails = emailsData.map((email) => email.email);
 
         // send request to SMTP ENDPOINT
         const response = await fetch(process.env.SMTPENDPOINT as string, {
@@ -553,7 +545,9 @@ app.post("/runFrom1BreakPoint", adminVerification, async (req: Request, res: Res
 
             const updatedLog = await verifyUpdateLog(log.LogID, "1", ({
                 apicode: 1,
-                emails: emails
+                emails: emails,
+                statuses: emailsData.map((email) => email.status),
+                providers: emailsData.map((email) => email.Provider)
             } as BreakPoint));
             if (!updatedLog) {
                 res.status(400).json({ message: "Failed to update log at First server failure" });
@@ -576,9 +570,529 @@ app.post("/runFrom1BreakPoint", adminVerification, async (req: Request, res: Res
     }
 });
 
+app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+
+        const { logID } = req.body;
+        if (!logID) {
+            res.status(400).json({ message: "Log ID not found" });
+            return;
+        }
+
+        const log = await verifyEmailLog(logID);
+        if (!log) {
+            res.status(400).json({ message: "Log not found" });
+            return;
+        }
+        if (log.status === "completed") {
+            res.status(200).json({ message: "Completed", "log": log });
+            return;
+        }
+
+        if (log.InProgress) {
+            res.status(200).json({ message: "In progress" });
+            return;
+        }
+
+        const googleWorkspaceEmails: Email[] = [];
+        const restEmails: Email[] = [];
+        const validEmails: Email[] = [];
+        const catchAllValidEmails: Email[] = [];
+        const UnknownEmails: Email[] = [];
+        const invalidEmails: Email[] = [];
+
+        const SMTPResponseStatus = await fetch(process.env.SMTPRESPONSE as string, {
+            method: "POST",
+            headers: {
+                "x-mails-api-key": process.env.SMTPAPIKEY as string,
+                "ID": logID
+            }
+        });
+
+        if (!SMTPResponseStatus.ok) {
+            res.status(400).json({ message: "Failed to check status from SMTP server" });
+            return;
+        }
+
+        const statusData = await SMTPResponseStatus.json() as SMTPStatus;
+        if (statusData.status !== 'completed') {
+            res.status(200).json({ message: "In progress", progress: statusData.progress });
+            return;
+        }
+
+        const updateProgressLog = await changeProgressStatus(logID, true);
+        if (!updateProgressLog) {
+            res.status(400).json({ message: "Failed to update log" });
+            return;
+        }
+
+        if (!statusData.emails) {
+            res.status(500).json({ message: "No emails found in first SMTP server" });
+            return;
+        }
+
+        for (const email of statusData.emails) {
+            if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
+                if (email.provider === "googleworkspace") {
+                    googleWorkspaceEmails.push(email);
+                } else {
+                    restEmails.push(email);
+                }
+            } else if (email.result === "deliverable") {
+                validEmails.push(email);
+            } else {
+                // console.log({"Invalid Email": email.result});
+                invalidEmails.push(email);
+            }
+        }
+
+        for (const email of restEmails) {
+
+            const response = await fetch(process.env.OutlookEndpoint as string, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email.email
+                })
+            })
+
+            if (!response.ok) {
+                //adding {email:"GoogleWorkSpaceStart"} to the emails array to send emails to google workspace server Because lazy do not want to change DB schema 
+                const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
+                const updatedLog = await verifyUpdateLog(logID, "2", ({
+                    apicode: 2,
+                    emails: pendingEmails.map((email) => email.email),
+                    statuses: pendingEmails.map((email) => email.result),
+                    providers: pendingEmails.map((email) => email.provider)
+                } as BreakPoint))
+                if (!updatedLog) {
+                    res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
+                    return;
+                }
+                res.status(400).json({ message: "Failed to send emails to outlook server" });
+                return;
+            }
+
+            const data = await response.json() as SECONDAPIResponse;
+
+            if (data['EMAIL-status'] === "valid") {
+                if (email.result === "catch_all" || email.result === "risky") {
+                    catchAllValidEmails.push(email);
+                }
+                else {
+                    validEmails.push(email);
+                }
+            }
+            else {
+                googleWorkspaceEmails.push(email);
+            }
+        }
+
+        for (const email of googleWorkspaceEmails) {
+            const response = await fetch(process.env.GsuiteEndpoint as string, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email.email
+                })
+            });
+
+            if (!response.ok) {
+                const updatedLog = await verifyUpdateLog(logID, "3", ({
+                    apicode: 3,
+                    emails: googleWorkspaceEmails.map((email) => email.email),
+                    providers: googleWorkspaceEmails.map((email) => email.provider),
+                    statuses: googleWorkspaceEmails.map((email) => email.result)
+                } as BreakPoint))
+                if (!updatedLog) {
+                    res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
+                    return;
+                }
+                res.status(400).json({ message: "Failed to send emails to Gsuite server" });
+                return;
+            }
+
+            const data = await response.json() as SECONDAPIResponse;
+
+            if (data['EMAIL-status'] === "valid") {
+                if (email.result === "catch_all" || email.result === "risky") {
+                    catchAllValidEmails.push(email);
+                }
+                else {
+                    validEmails.push(email);
+                }
+            }
+            else {
+                UnknownEmails.push(email);
+            }
+        }
+
+        const Location = updateProgressLog.url;
+
+        const uploadedJson = await fetch(Location as string);
+        if (!uploadedJson.ok) {
+            res.status(400).json({ message: "Failed to fetch uploaded JSON" });
+            return;
+        }
+
+        const uploadedJsonData = await uploadedJson.json();
+
+        console.log({ uploadedJsonData: uploadedJsonData });
+
+        // Create JSON object
+        const data = {
+            ...uploadedJsonData,
+            ValidEmails: validEmails.map((email) => email.email),
+            CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
+            InvalidEmails: invalidEmails.map((email) => email.email),
+            UnknownEmails: UnknownEmails.map((email) => email.email)
+        };
+
+        console.log({ data: data });
 
 
+        const JSONData = JSON.stringify(data, null, 2);
 
+        const updatedLog = await verifyUpdateLog(logID, "completed", ({
+            apicode: 4,
+            emails: [],
+            providers: [],
+            statuses: []
+        } as BreakPoint))
+        if (!updatedLog) {
+            res.status(400).json({ message: "Failed to update log at Done" });
+            return;
+        }
+
+        const addJSONstring = await addJSONStringToLog(logID, JSONData, validEmails.length, invalidEmails.length, UnknownEmails.length, catchAllValidEmails.length);;
+        if (!addJSONstring) {
+            res.status(400).json({ message: "Failed to add JSON data to log" });
+            return;
+        }
+
+        res.status(200).json({
+            message: "File uploaded successfully",
+            validEmails: validEmails.length,
+            catchAllValidEmails: catchAllValidEmails.length,
+            invalidEmails: invalidEmails.length,
+            UnknownEmails: UnknownEmails.length
+        });
+
+        return;
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+})
+
+app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { logID } = req.body;
+
+        const log = await verifyEmailLog(logID);
+        if (!log) {
+            throw new Error("log not found");
+        }
+
+        if (log.status !== "2") {
+            throw new Error("log is not at breakpoint 2");
+        }
+
+        const breakPoint = await getBreakPoint(logID);
+        if (!breakPoint) {
+            throw new Error("breakpoint not found");
+        }
+
+        const emailsData = await getEmailsFromBreakPoint(breakPoint.BreakPointID);
+
+        let googleWorkspaceEmails: EmailSingleDB[] = [];
+        let restEmails: EmailSingleDB[] = [];
+        const validEmails: EmailSingleDB[] = [];
+        const catchAllValidEmails: EmailSingleDB[] = [];
+        const UnknownEmails: EmailSingleDB[] = [];
+        const invalidEmails: EmailSingleDB[] = [];
+
+
+        for (const email of emailsData) {
+            if (email.status === "unknown" || email.status === "catch_all" || email.status === "risky") {
+                if (email.Provider === "googleworkspace") {
+                    googleWorkspaceEmails.push(email);
+                } else {
+                    restEmails.push(email)
+                }
+            } else if (email.Provider === "deliverable") {
+                validEmails.push(email);
+            } else {
+                // console.log({"Invalid Email": email.result});
+                invalidEmails.push(email);
+            }
+
+
+            // alas buri bala change in v2
+
+            for (const email of restEmails) {
+                const response = await fetch(process.env.OutlookEndpoint as string, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: email
+                    })
+                })
+
+                if (!response.ok) {
+                    //adding {email:"GoogleWorkSpaceStart"} to the emails array to send emails to google workspace server Because lazy do not want to change DB schema 
+                    const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
+                    const updatedLog = await verifyUpdateLog(logID, "2", ({
+                        apicode: 2,
+                        emails: pendingEmails.map((email) => email.email),
+                        statuses: pendingEmails.map((email) => email.status),
+                        providers: pendingEmails.map((email) => email.Provider)
+                    } as BreakPoint))
+                    if (!updatedLog) {
+                        res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
+                        return;
+                    }
+                    res.status(400).json({ message: "Failed to send emails to outlook server" });
+                    return;
+                }
+
+                const data = await response.json() as SECONDAPIResponse;
+
+                if (data['EMAIL-status'] === "valid") {
+                    if (email.Provider === "catch_all" || email.Provider === "``risky") {
+                        catchAllValidEmails.push(email);
+                    }
+                    else {
+                        validEmails.push(email);
+                    }
+                }
+                else {
+                    googleWorkspaceEmails.push(email);
+                }
+            }
+
+            for (const email of googleWorkspaceEmails) {
+                const response = await fetch(process.env.GsuiteEndpoint as string, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: email.email
+                    })
+                });
+
+                if (!response.ok) {
+                    const updatedLog = await verifyUpdateLog(logID, "3", ({
+                        apicode: 3,
+                        emails: googleWorkspaceEmails.map((email) => email.email),
+                        statuses: googleWorkspaceEmails.map((email) => email.status),
+                        providers: googleWorkspaceEmails.map((email) => email.Provider)
+                    } as BreakPoint))
+                    if (!updatedLog) {
+                        res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
+                        return;
+                    }
+                    res.status(400).json({ message: "Failed to send emails to Gsuite server" });
+                    return;
+                }
+
+                const data = await response.json() as SECONDAPIResponse;
+
+                if (data['EMAIL-status'] === "valid") {
+                    if (email.Provider === "catch_all" || email.Provider === "risky") {
+                        catchAllValidEmails.push(email);
+                    }
+                    else {
+                        validEmails.push(email);
+                    }
+                }
+                else {
+                    UnknownEmails.push(email);
+                }
+            }
+
+            const Location = log.url;
+
+            const uploadedJson = await fetch(Location as string);
+            if (!uploadedJson.ok) {
+                res.status(400).json({ message: "Failed to fetch uploaded JSON" });
+                return;
+            }
+
+            const uploadedJsonData = await uploadedJson.json();
+
+
+            // Create JSON object
+            const data = {
+                ...uploadedJsonData,
+                ValidEmails: validEmails.map((email) => email.email),
+                CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
+                InvalidEmails: invalidEmails.map((email) => email.email),
+                UnknownEmails: UnknownEmails.map((email) => email.email)
+            };
+
+            const JSONData = JSON.stringify(data, null, 2);
+
+            const updatedLog = await verifyUpdateLog(logID, "completed", ({
+                apicode: 4,
+                emails: [],
+                statuses: [],
+                providers: []
+            } as BreakPoint))
+            if (!updatedLog) {
+                res.status(400).json({ message: "Failed to update log at Done" });
+                return;
+            }
+
+            const addJSONstring = await addJSONStringToLog(logID, JSONData, validEmails.length, invalidEmails.length, UnknownEmails.length, catchAllValidEmails.length);;
+            if (!addJSONstring) {
+                res.status(400).json({ message: "Failed to add JSON data to log" });
+                return;
+            }
+
+            res.status(200).json({
+                message: "File uploaded successfully",
+                validEmails: validEmails.length,
+                catchAllValidEmails: catchAllValidEmails.length,
+                invalidEmails: invalidEmails.length,
+                UnknownEmails: UnknownEmails.length
+            });
+
+            return;
+
+        }
+    } catch (e: any) {
+        res.status(500).json({ message: e.message });
+    }
+})
+
+app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        const { logID } = req.body;
+
+        const log = await verifyEmailLog(logID);
+        if (!log) {
+            throw new Error("log not found");
+        }
+
+        if (log.status !== "3") {
+            throw new Error("log is not at breakpoint 3");
+        }
+
+        const breakPoint = await getBreakPoint(logID);
+        if (!breakPoint) {
+            throw new Error("breakpoint not found");
+        }
+
+        const emailsData = await getEmailsFromBreakPoint(breakPoint.BreakPointID);
+        let emails: EmailSingleDB[] = [];
+        const validEmails: EmailSingleDB[] = [];
+        const catchAllValidEmails: EmailSingleDB[] = [];
+        const UnknownEmails: EmailSingleDB[] = [];
+        const invalidEmails: EmailSingleDB[] = [];
+
+       
+
+        for (const emailData of emails) {
+            const response = await fetch(process.env.GsuiteEndpoint as string, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: emailData.email
+                })
+            });
+
+            if (!response.ok) {
+                const updatedLog = await verifyUpdateLog(logID, "3", ({
+                    apicode: 3,
+                    emails: emailsData.map((email) => email.email),
+                    statuses: emailsData.map((email) => email.status),
+                    providers: emailsData.map((email) => email.Provider)
+                } as BreakPoint))
+                if (!updatedLog) {
+                    res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
+                    return;
+                }
+                res.status(400).json({ message: "Failed to send emails to Gsuite server" });
+                return;
+            }
+
+            const data = await response.json() as SECONDAPIResponse;
+
+            if (data['EMAIL-status'] === "valid") {
+                if (emailData.Provider === "catch_all" || emailData.Provider === "risky") {
+                    catchAllValidEmails.push(emailData);
+                }
+                else {
+                    validEmails.push(emailData);
+                }
+            }
+            else {
+                UnknownEmails.push(emailData);
+            }
+        }
+
+        const Location = log.url;
+
+        const uploadedJson = await fetch(Location as string);
+        if (!uploadedJson.ok) {
+            res.status(400).json({ message: "Failed to fetch uploaded JSON" });
+            return;
+        }
+
+        const uploadedJsonData = await uploadedJson.json();
+
+        console.log({ uploadedJsonData: uploadedJsonData });
+
+        // Create JSON object
+        const data = {
+            ...uploadedJsonData,
+            ValidEmails: validEmails.map((email) => email.email),
+            CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
+            InvalidEmails: invalidEmails.map((email) => email.email),
+            UnknownEmails: UnknownEmails.map((email) => email.email)
+        };
+
+        const JSONData = JSON.stringify(data, null, 2);
+
+        const updatedLog = await verifyUpdateLog(logID, "completed", ({
+            apicode: 4,
+            emails: [],
+            statuses: [],
+            providers: []
+        } as BreakPoint))
+        if (!updatedLog) {
+            res.status(400).json({ message: "Failed to update log at Done" });
+            return;
+        }
+
+        const addJSONstring = await addJSONStringToLog(logID, JSONData, validEmails.length, invalidEmails.length, UnknownEmails.length, catchAllValidEmails.length);;
+        if (!addJSONstring) {
+            res.status(400).json({ message: "Failed to add JSON data to log" });
+            return;
+        }
+
+        res.status(200).json({
+            message: "File uploaded successfully",
+            validEmails: validEmails.length,
+            catchAllValidEmails: catchAllValidEmails.length,
+            invalidEmails: invalidEmails.length,
+            UnknownEmails: UnknownEmails.length
+        });
+
+        return;
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+})
 
 
 export default app;

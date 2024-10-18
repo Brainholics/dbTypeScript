@@ -285,17 +285,20 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             })
 
             if (!response.ok) {
+                //adding {email:"GoogleWorkSpaceStart"} to the emails array to send emails to google workspace server Because lazy do not want to change DB schema 
                 const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
-                const updatedLog = await updateLog(logID, "2", ({
-                    apicode: 2,
-                    emails: pendingEmails.map((email) => email.email)
-                } as BreakPoint))
-                if (!updatedLog) {
-                    res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
+                    const updatedLog = await updateLog(logID, "2", ({
+                        apicode: 2,
+                        emails: pendingEmails.map((email) => email.email),
+                        statuses: pendingEmails.map((email) => email.result),
+                        providers: pendingEmails.map((email) => email.provider)
+                    } as BreakPoint))
+                    if (!updatedLog) {
+                        res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
+                        return;
+                    }
+                    res.status(400).json({ message: "Failed to send emails to outlook server" });
                     return;
-                }
-                res.status(400).json({ message: "Failed to send emails to outlook server" });
-                return;
             }
 
             const data = await response.json() as SECONDAPIResponse;
@@ -327,7 +330,9 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             if (!response.ok) {
                 const updatedLog = await updateLog(logID, "3", ({
                     apicode: 3,
-                    emails: googleWorkspaceEmails.map((email) => email.email)
+                    emails: googleWorkspaceEmails.map((email) => email.email),
+                    statuses: googleWorkspaceEmails.map((email) => email.result),
+                    providers: googleWorkspaceEmails.map((email) => email.provider)
                 } as BreakPoint))
                 if (!updatedLog) {
                     res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
@@ -380,7 +385,9 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         const updatedLog = await updateLog(logID, "completed", ({
             apicode: 4,
-            emails: []
+            emails: [],
+            providers: [],
+            statuses: []
         } as BreakPoint))
         if (!updatedLog) {
             res.status(400).json({ message: "Failed to update log at Done" });

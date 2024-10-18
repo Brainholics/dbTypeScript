@@ -9,11 +9,20 @@ datasource db {
   directUrl = env("enrichminiondb_direct_url")
 }
 
+model Email {
+  Provider   String
+  email      String       @id
+  status     String
+  BreakPoint BreakPoint @relation(fields: [BreakPointBreakPointID], references: [BreakPointID])
+BreakPointBreakPointID String
+}
+
 model BreakPoint {
-  LogID   String                @unique
-  ApiCode Int
-  Emails  String[]
-  log     EmailVerificationLogs @relation(fields: [LogID], references: [LogID])
+  BreakPointID String                @id @default(cuid())
+  LogID        String                @unique
+  ApiCode      Int
+  Emails       Email[]
+  log          EmailVerificationLogs @relation(fields: [LogID], references: [LogID])
 }
 
 model EmailVerificationLogs {

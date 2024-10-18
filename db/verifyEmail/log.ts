@@ -86,7 +86,6 @@ export async function updateLog(
     logID: string, 
     status: string,
     breakPoint: BreakPoint
-    
 ): Promise<Logs | null> {
     try {
         const existingLog = await prisma.emailVerificationLogs.findUnique({
@@ -109,11 +108,28 @@ export async function updateLog(
                     upsert: {
                         create: {
                             ApiCode: breakPoint.apicode,
-                            Emails: breakPoint.emails
+                            Emails: {
+                                createMany: {
+                                    data: breakPoint.emails.map((email, index) => ({
+                                        email,
+                                        Provider: breakPoint.providers[index],
+                                        status: breakPoint.statuses[index],
+                                    }))
+                                }
+                            }
                         },
                         update: {
                             ApiCode: breakPoint.apicode,
-                            Emails: breakPoint.emails
+                            Emails: {
+                                deleteMany: {}, // Clear previous emails to avoid duplicates
+                                createMany: {
+                                    data: breakPoint.emails.map((email, index) => ({
+                                        email,
+                                        Provider: breakPoint.providers[index],
+                                        status: breakPoint.statuses[index],
+                                    }))
+                                }
+                            }
                         }
                     }
                 }
@@ -249,3 +265,13 @@ export async function getBreakPoint(logID: string) {
 
     return data?.breakPoint;
 }   
+
+export async function getEmailsFromBreakPoint(breakPointID: string) {
+    const data = await prisma.email.findMany({
+        where: {
+            BreakPointBreakPointID: breakPointID
+        }
+    });
+
+    return data;
+}
