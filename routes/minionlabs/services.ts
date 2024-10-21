@@ -22,103 +22,11 @@ const app = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// app.post("/executeFile", verifySessionToken, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
-//     try {
-//         const userID = (req as any).user.id;
-//         const email = (req as any).user.email;
-//         // file came
-
-//         const file = req.file;
-//         if (!file) {
-//             res.status(400).json({ message: "File not found" });
-//             return;
-//         }
-
-//         const currentTime = new Date().getTime();
-
-//         // file upload to s3
-//         const fileName = `${userID}-${email}-${currentTime}.csv`;
-//         const inputParams = {
-//             Bucket: "verify",
-//             Key: fileName,
-//             Body: file.buffer,
-//             ACL: "public-read",
-//         }
-//         const uploadResult = await s3.upload(inputParams).promise();
-
-//         // extract emails
-//         const emailsList: string[] = await extractEmails(file);
-//         if (emailsList.length === 0) {
-//             res.status(400).json({ message: "No emails found in the file please check your file" });
-//             return;
-//         }
-//         console.log(emailsList);
-
-
-//         const emailsCount = emailsList.length;
-//         const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
-
-//         // deduct credits 
-//         const credits = await removeCredits(creditsUsed, userID);
-//         if (!credits) {
-//             res.status(400).json({ message: "Insufficient credits" });
-//             return;
-//         }
-
-//         // send request to SMTP ENDPOINT
-//         const response = await fetch(process.env.SMTPENDPOINT as string, {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "application/json",
-//             },
-//             body: JSON.stringify({
-//                 emails: emailsList,
-//             }),
-//             redirect: "follow",
-//         })
-
-//         if (!response.ok) {
-//             res.status(400).json({ message: "Failed to send emails to SMTP server" });
-//             const log = await createLog("0", userID, fileName, creditsUsed, emailsCount,false);
-//             if (!log) {
-//                 res.status(400).json({ message: "Failed to create log" });
-//                 return;
-//             }
-
-//             const updatedLog = await updateLog(log.LogID, "failed at 1", ({
-//                 apicode: 1,
-//                 emails: emailsList
-//             } as BreakPoint));
-//             if (!updatedLog) {
-//                 res.status(400).json({ message: "Failed to update log at First server failure" });
-//                 return;
-//             }
-//             return;
-//         }
-
-//         const data = await response.json() as SMTPResponse;
-
-//         // create log
-//         const log = await createLog(data.id, userID, fileName, creditsUsed, emailsCount,false);
-
-//         if (!log) {
-//             res.status(400).json({ message: "Failed to create log" });
-//             return;
-//         }
-
-//         res.status(200).json({ message: "File uploaded successfully", log });
-
-//     } catch (error: any) {
-//         res.status(500).json({ message: error.message });
-//     }
-// });
-
 app.post("/executeFileJsonInput", verifySessionToken, upload.single("json"), async (req: Request, res: Response): Promise<void> => {
     try {
         const userID = (req as any).user.id;
         const email = (req as any).user.email;
         // file came
-
         if (!req.file) {
             res.status(400).json({ message: "File not found" });
             return;
@@ -170,7 +78,9 @@ app.post("/executeFileJsonInput", verifySessionToken, upload.single("json"), asy
 
             const updatedLog = await updateLog(log.LogID, "1", ({
                 apicode: 1,
-                emails: emails
+                emails: emails,
+                providers: [],
+                statuses: []
             } as BreakPoint));
             if (!updatedLog) {
                 res.status(400).json({ message: "Failed to update log at First server failure" });
@@ -198,7 +108,6 @@ app.post("/executeFileJsonInput", verifySessionToken, upload.single("json"), asy
 
 app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response): Promise<void> => {
     try {
-
         const { logID } = req.body;
         if (!logID) {
             res.status(400).json({ message: "Log ID not found" });
@@ -287,18 +196,18 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             if (!response.ok) {
                 //adding {email:"GoogleWorkSpaceStart"} to the emails array to send emails to google workspace server Because lazy do not want to change DB schema 
                 const pendingEmails = [...restEmails, ...googleWorkspaceEmails];
-                    const updatedLog = await updateLog(logID, "2", ({
-                        apicode: 2,
-                        emails: pendingEmails.map((email) => email.email),
-                        statuses: pendingEmails.map((email) => email.result),
-                        providers: pendingEmails.map((email) => email.provider)
-                    } as BreakPoint))
-                    if (!updatedLog) {
-                        res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
-                        return;
-                    }
-                    res.status(400).json({ message: "Failed to send emails to outlook server" });
+                const updatedLog = await updateLog(logID, "2", ({
+                    apicode: 2,
+                    emails: pendingEmails.map((email) => email.email),
+                    providers: pendingEmails.map((email) => email.provider),
+                    statuses: pendingEmails.map((email) => email.result)
+                } as BreakPoint))
+                if (!updatedLog) {
+                    res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
                     return;
+                }
+                res.status(400).json({ message: "Failed to send emails to outlook server" });
+                return;
             }
 
             const data = await response.json() as SECONDAPIResponse;
@@ -331,8 +240,8 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
                 const updatedLog = await updateLog(logID, "3", ({
                     apicode: 3,
                     emails: googleWorkspaceEmails.map((email) => email.email),
-                    statuses: googleWorkspaceEmails.map((email) => email.result),
-                    providers: googleWorkspaceEmails.map((email) => email.provider)
+                    providers: googleWorkspaceEmails.map((email) => email.provider),
+                    statuses: googleWorkspaceEmails.map((email) => email.result)
                 } as BreakPoint))
                 if (!updatedLog) {
                     res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
@@ -412,7 +321,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
-})
+});
 
 app.post("/generateAPIkey", verifySessionToken, async (req: Request, res: Response) => {  //TESTED
     try {

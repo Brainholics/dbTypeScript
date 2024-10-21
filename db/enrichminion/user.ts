@@ -1,3 +1,4 @@
+import { v4 } from "uuid";
 import {PrismaClient as EnrichminionDB, User}
  from "../../prisma/enrichminion/generated"
 
@@ -23,6 +24,7 @@ export async function createUser(
                 location: location,
                 credits: 0,
                 currency: currency,
+                apikey: v4(),
             },
         });
 
@@ -115,6 +117,24 @@ export async function getCredits(userID: string): Promise<number | null> {
         });
 
         return data ? data.credits : null;
+    } catch (error: any) {
+        throw new Error(error.message);
+    }
+}
+
+export  async function refreshAPIKey(userID: string): Promise<string | null> {
+    try {
+        const refreshedAPIKey = v4();
+        const data = await prisma.user.update({
+            where: {
+                UserID: userID,
+            },
+            data: {
+                apikey: refreshedAPIKey
+            },
+        });
+
+        return data.apikey;
     } catch (error: any) {
         throw new Error(error.message);
     }

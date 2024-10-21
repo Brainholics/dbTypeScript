@@ -1094,5 +1094,108 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
     }
 })
 
+app.get("/setVerifyStatusToDev", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try{
+
+        process.env.VerifyStatus = "development";
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)VerifyStatus=.*/, `$1VerifyStatus=development`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    }catch(e:any){
+        res.status(400).json({message:e.message})
+    }
+})
+
+app.get("/setVerifyStatusToProd", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try{
+
+        process.env.VerifyStatus = "production";
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)VerifyStatus=.*/, `$1VerifyStatus=production`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    }catch(e:any){
+        res.status(400).json({message:e.message})
+    }
+})
+
+app.get("/getVerifyStatus", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.VerifyStatus) {
+            throw new Error("no status set");
+        }
+        res.status(200).json({ "resp": process.env.VerifyStatus });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
+app.get("/setEnrichStatusToDev", adminVerification, async (req: Request, res: Response) => {  //TESTED  
+
+    try{
+
+        process.env.EnrichStatus = "development";
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)EnrichStatus=.*/, `$1EnrichStatus=development`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    }catch(e:any){
+        res.status(400).json({message:e.message})
+    }
+})
+
+app.get("/setEnrichStatusToProd", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try{
+
+        process.env.EnrichStatus = "production";
+
+        const envFilePath = path.resolve(__dirname, '../../.env');
+        if (!fs.existsSync(envFilePath)) {
+            throw new Error(".env file not found");
+        }
+
+        let envFileContent = fs.readFileSync(envFilePath, 'utf8');
+        const newEnvFileContent = envFileContent.replace(/(^|\n)EnrichStatus=.*/, `$1EnrichStatus=production`);
+        fs.writeFileSync(envFilePath, newEnvFileContent);
+
+        res.status(200).json({ "resp": "updated price" });
+    }catch(e:any){
+        res.status(400).json({message:e.message})
+    }
+});
+
+app.get("/getEnrichStatus", adminVerification, async (req: Request, res: Response) => {  //TESTED
+    try {
+        if (!process.env.EnrichStatus) {
+            throw new Error("no status set");
+        }
+        res.status(200).json({ "resp": process.env.EnrichStatus });
+    } catch (error: any) {
+        res.status(404).json({ "error": error.message });
+    }
+});
+
 
 export default app;

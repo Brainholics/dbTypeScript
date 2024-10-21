@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { generateAPIkey, getApiKey, revokeAPIkey } from "../../db/enrichminion/admin";
-import { addCredits, createUser, getUser, removeCredits } from "../../db/enrichminion/user";
+import { addCredits, createUser, getUser, refreshAPIKey, removeCredits } from "../../db/enrichminion/user";
 import userMiddleware from "../../middleware/enrichminion/supabaseAuth";
 
 const app = express.Router();
@@ -29,6 +29,23 @@ app.post("/register", userMiddleware, async (req: Request, res: Response): Promi
 
         res.status(200).json({ message: "User created successfully", user });
 
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+app.get("/refreshAPIkey", userMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userID = (req as any).user.id;
+
+        const updatedAPIkey = await refreshAPIKey(userID);
+
+        if (!updatedAPIkey) {
+            res.status(400).json({ message: "Failed to refresh API key" });
+            return;
+        }
+
+        res.status(200).json({ message: `API key refreshed successfully`, updatedAPIkey });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
