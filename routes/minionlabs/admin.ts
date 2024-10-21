@@ -547,7 +547,9 @@ app.post("/runFrom1BreakPoint", adminVerification, async (req: Request, res: Res
                 apicode: 1,
                 emails: emails,
                 statuses: emailsData.map((email) => email.status),
-                providers: emailsData.map((email) => email.Provider)
+                providers: emailsData.map((email) => email.Provider),
+                mxProviders: emailsData.map((email) => email.mxProvider),
+                mxRecords: emailsData.map((email) => email.mxRecord),
             } as BreakPoint));
             if (!updatedLog) {
                 res.status(400).json({ message: "Failed to update log at First server failure" });
@@ -590,7 +592,7 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
         }
 
         if (log.InProgress) {
-            res.status(200).json({ message: "In progress" });
+            res.status(200).json({ message: "In progress", log });
             return;
         }
 
@@ -601,24 +603,44 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
         const UnknownEmails: Email[] = [];
         const invalidEmails: Email[] = [];
 
-        const SMTPResponseStatus = await fetch(process.env.SMTPRESPONSE as string, {
-            method: "POST",
-            headers: {
-                "x-mails-api-key": process.env.SMTPAPIKEY as string,
-                "ID": logID
+        // Function to poll SMTP response status
+        const checkSMTPStatus = async (): Promise<SMTPStatus | null> => {
+            const maxRetries = 60; // Retry for up to 5 minutes (5 seconds * 60 retries)
+            let retries = 0;
+            let statusData: SMTPStatus | null = null;
+
+            while (retries < maxRetries) {
+                const SMTPResponseStatus = await fetch(process.env.SMTPRESPONSE as string, {
+                    method: "POST",
+                    headers: {
+                        "x-mails-api-key": process.env.SMTPAPIKEY as string,
+                        "ID": logID
+                    }
+                });
+
+                if (SMTPResponseStatus.ok) {
+                    statusData = await SMTPResponseStatus.json() as SMTPStatus;
+
+                    if (statusData.status === 'completed') {
+                        return statusData;
+                    }
+
+                    // If status is not complete, wait 5 seconds before retrying
+                    retries++;
+                    await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000)); // Wait 5 seconds
+                } else {
+                    res.status(400).json({ message: "Failed to check status from SMTP server" });
+                    return null;
+                }
             }
-        });
 
-        if (!SMTPResponseStatus.ok) {
-            res.status(400).json({ message: "Failed to check status from SMTP server" });
-            return;
-        }
+            res.status(408).json({ message: "Timeout: Status not completed within 5 hours" });
+            return null;
+        };
 
-        const statusData = await SMTPResponseStatus.json() as SMTPStatus;
-        if (statusData.status !== 'completed') {
-            res.status(200).json({ message: "In progress", progress: statusData.progress });
-            return;
-        }
+        // Call the polling function
+        const statusData = await checkSMTPStatus();
+        if (!statusData) return;
 
         const updateProgressLog = await changeProgressStatus(logID, true);
         if (!updateProgressLog) {
@@ -665,7 +687,9 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
                     apicode: 2,
                     emails: pendingEmails.map((email) => email.email),
                     statuses: pendingEmails.map((email) => email.result),
-                    providers: pendingEmails.map((email) => email.provider)
+                    providers: pendingEmails.map((email) => email.provider),
+                    mxProviders: statusData.emails.map((email) => email.provider),
+                    mxRecords: statusData.emails.map((email) => email.mx_record),
                 } as BreakPoint))
                 if (!updatedLog) {
                     res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
@@ -706,7 +730,9 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
                     apicode: 3,
                     emails: googleWorkspaceEmails.map((email) => email.email),
                     providers: googleWorkspaceEmails.map((email) => email.provider),
-                    statuses: googleWorkspaceEmails.map((email) => email.result)
+                    statuses: googleWorkspaceEmails.map((email) => email.result),
+                    mxProviders: statusData.emails.map((email) => email.provider),
+                    mxRecords: statusData.emails.map((email) => email.mx_record),
                 } as BreakPoint))
                 if (!updatedLog) {
                     res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
@@ -741,15 +767,14 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
 
         const uploadedJsonData = await uploadedJson.json();
 
-        console.log({ uploadedJsonData: uploadedJsonData });
-
-        // Create JSON object
         const data = {
             ...uploadedJsonData,
             ValidEmails: validEmails.map((email) => email.email),
             CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
             InvalidEmails: invalidEmails.map((email) => email.email),
-            UnknownEmails: UnknownEmails.map((email) => email.email)
+            UnknownEmails: UnknownEmails.map((email) => email.email),
+            MxProviders: statusData.emails.map((email) => email.provider),
+            MxRecords: statusData.emails.map((email) => email.mx_record),
         };
 
         console.log({ data: data });
@@ -761,7 +786,9 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
             apicode: 4,
             emails: [],
             providers: [],
-            statuses: []
+            statuses: [],
+            mxProviders: [],
+            mxRecords: [],
         } as BreakPoint))
         if (!updatedLog) {
             res.status(400).json({ message: "Failed to update log at Done" });
@@ -779,7 +806,9 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
             validEmails: validEmails.length,
             catchAllValidEmails: catchAllValidEmails.length,
             invalidEmails: invalidEmails.length,
-            UnknownEmails: UnknownEmails.length
+            UnknownEmails: UnknownEmails.length,
+            mxProvier: statusData.emails.length,
+            mxRecords: statusData.emails.length
         });
 
         return;
@@ -851,7 +880,9 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
                         apicode: 2,
                         emails: pendingEmails.map((email) => email.email),
                         statuses: pendingEmails.map((email) => email.status),
-                        providers: pendingEmails.map((email) => email.Provider)
+                        providers: pendingEmails.map((email) => email.Provider),
+                        mxProviders: emailsData.map((email) => email.mxProvider),
+                        mxRecords: emailsData.map((email) => email.mxRecord)
                     } as BreakPoint))
                     if (!updatedLog) {
                         res.status(400).json({ message: "Failed to update log in case of outlook server failure" });
@@ -892,7 +923,9 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
                         apicode: 3,
                         emails: googleWorkspaceEmails.map((email) => email.email),
                         statuses: googleWorkspaceEmails.map((email) => email.status),
-                        providers: googleWorkspaceEmails.map((email) => email.Provider)
+                        providers: googleWorkspaceEmails.map((email) => email.Provider),
+                        mxProviders: emailsData.map((email) => email.mxProvider),
+                        mxRecords: emailsData.map((email) => email.mxRecord)
                     } as BreakPoint))
                     if (!updatedLog) {
                         res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
@@ -934,7 +967,9 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
                 ValidEmails: validEmails.map((email) => email.email),
                 CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
                 InvalidEmails: invalidEmails.map((email) => email.email),
-                UnknownEmails: UnknownEmails.map((email) => email.email)
+                UnknownEmails: UnknownEmails.map((email) => email.email),
+                MxProviders: emailsData.map((email) => email.mxProvider),
+                MxRecords: emailsData.map((email) => email.mxRecord),
             };
 
             const JSONData = JSON.stringify(data, null, 2);
@@ -943,7 +978,9 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
                 apicode: 4,
                 emails: [],
                 statuses: [],
-                providers: []
+                providers: [],
+                mxProviders: [],
+                mxRecords: []
             } as BreakPoint))
             if (!updatedLog) {
                 res.status(400).json({ message: "Failed to update log at Done" });
@@ -997,7 +1034,7 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
         const UnknownEmails: EmailSingleDB[] = [];
         const invalidEmails: EmailSingleDB[] = [];
 
-       
+
 
         for (const emailData of emails) {
             const response = await fetch(process.env.GsuiteEndpoint as string, {
@@ -1015,7 +1052,9 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
                     apicode: 3,
                     emails: emailsData.map((email) => email.email),
                     statuses: emailsData.map((email) => email.status),
-                    providers: emailsData.map((email) => email.Provider)
+                    providers: emailsData.map((email) => email.Provider),
+                    mxProviders: emailsData.map((email) => email.mxProvider),
+                    mxRecords: emailsData.map((email) => email.mxRecord)
                 } as BreakPoint))
                 if (!updatedLog) {
                     res.status(400).json({ message: "Failed to update log in case of Gsuite server failure" });
@@ -1050,15 +1089,15 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
 
         const uploadedJsonData = await uploadedJson.json();
 
-        console.log({ uploadedJsonData: uploadedJsonData });
-
         // Create JSON object
         const data = {
             ...uploadedJsonData,
             ValidEmails: validEmails.map((email) => email.email),
             CatchAllValidEmails: catchAllValidEmails.map((email) => email.email),
             InvalidEmails: invalidEmails.map((email) => email.email),
-            UnknownEmails: UnknownEmails.map((email) => email.email)
+            UnknownEmails: UnknownEmails.map((email) => email.email),
+            MxProviders: emailsData.map((email) => email.mxProvider),
+            MxRecords: emailsData.map((email) => email.mxRecord),
         };
 
         const JSONData = JSON.stringify(data, null, 2);
@@ -1067,7 +1106,9 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
             apicode: 4,
             emails: [],
             statuses: [],
-            providers: []
+            providers: [],
+            mxProviders: [],
+            mxRecords: []
         } as BreakPoint))
         if (!updatedLog) {
             res.status(400).json({ message: "Failed to update log at Done" });
@@ -1095,7 +1136,7 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
 })
 
 app.get("/setVerifyStatusToDev", adminVerification, async (req: Request, res: Response) => {  //TESTED
-    try{
+    try {
 
         process.env.VerifyStatus = "development";
 
@@ -1109,13 +1150,13 @@ app.get("/setVerifyStatusToDev", adminVerification, async (req: Request, res: Re
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
-    }catch(e:any){
-        res.status(400).json({message:e.message})
+    } catch (e: any) {
+        res.status(400).json({ message: e.message })
     }
 })
 
 app.get("/setVerifyStatusToProd", adminVerification, async (req: Request, res: Response) => {  //TESTED
-    try{
+    try {
 
         process.env.VerifyStatus = "production";
 
@@ -1129,8 +1170,8 @@ app.get("/setVerifyStatusToProd", adminVerification, async (req: Request, res: R
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
-    }catch(e:any){
-        res.status(400).json({message:e.message})
+    } catch (e: any) {
+        res.status(400).json({ message: e.message })
     }
 })
 
@@ -1147,7 +1188,7 @@ app.get("/getVerifyStatus", adminVerification, async (req: Request, res: Respons
 
 app.get("/setEnrichStatusToDev", adminVerification, async (req: Request, res: Response) => {  //TESTED  
 
-    try{
+    try {
 
         process.env.EnrichStatus = "development";
 
@@ -1161,13 +1202,13 @@ app.get("/setEnrichStatusToDev", adminVerification, async (req: Request, res: Re
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
-    }catch(e:any){
-        res.status(400).json({message:e.message})
+    } catch (e: any) {
+        res.status(400).json({ message: e.message })
     }
 })
 
 app.get("/setEnrichStatusToProd", adminVerification, async (req: Request, res: Response) => {  //TESTED
-    try{
+    try {
 
         process.env.EnrichStatus = "production";
 
@@ -1181,8 +1222,8 @@ app.get("/setEnrichStatusToProd", adminVerification, async (req: Request, res: R
         fs.writeFileSync(envFilePath, newEnvFileContent);
 
         res.status(200).json({ "resp": "updated price" });
-    }catch(e:any){
-        res.status(400).json({message:e.message})
+    } catch (e: any) {
+        res.status(400).json({ message: e.message })
     }
 });
 

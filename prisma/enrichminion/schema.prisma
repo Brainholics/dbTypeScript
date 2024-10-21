@@ -13,6 +13,8 @@ model Email {
   Provider   String
   email      String       @id
   status     String
+  mxRecord   String
+  mxProvider String
   BreakPoint BreakPoint @relation(fields: [BreakPointBreakPointID], references: [BreakPointID])
 BreakPointBreakPointID String
 }

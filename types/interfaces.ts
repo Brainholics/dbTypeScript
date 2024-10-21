@@ -3,6 +3,8 @@ export interface BreakPoint {
     emails: string[];
     providers: string[];
     statuses: string[]; 
+    mxRecords: string[];
+    mxProviders: string[];
 }
 
 export interface EmailSingleDB {
