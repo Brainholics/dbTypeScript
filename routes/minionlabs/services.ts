@@ -140,7 +140,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         // Function to poll SMTP response status
         const checkSMTPStatus = async (): Promise<SMTPStatus | null> => {
-            const maxRetries = 60; // Retry for up to 5 minutes (5 seconds * 60 retries)
+            const maxRetries = 60; // 5 hours
             let retries = 0;
             let statusData: SMTPStatus | null = null;
 
@@ -175,7 +175,20 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         // Call the polling function
         const statusData = await checkSMTPStatus();
-        if (!statusData) return;
+        if (!statusData){
+            const updatedLog = await updateLog(logID, "1", ({
+                apicode: 1,
+                emails: [],
+                providers: [],
+                statuses: [],
+                mxRecords: [],
+                mxProviders: []
+            } as BreakPoint))
+            if (!updatedLog) {
+                res.status(400).json({ message: "Failed to update log at First server failure" });
+                return;
+            }
+        }
 
         const updateProgressLog = await changeProgressStatus(logID, true);
         if (!updateProgressLog) {
@@ -183,7 +196,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             return;
         }
 
-        if (!statusData.emails) {
+        if (!statusData || !statusData.emails) {
             res.status(500).json({ message: "No emails found in first SMTP server" });
             return;
         }

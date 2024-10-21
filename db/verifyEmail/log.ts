@@ -114,6 +114,8 @@ export async function updateLog(
                                         email,
                                         Provider: breakPoint.providers[index],
                                         status: breakPoint.statuses[index],
+                                        mxProvider: breakPoint.mxProviders[index],
+                                        mxRecord: breakPoint.mxRecords[index]
                                     }))
                                 }
                             }
@@ -127,6 +129,8 @@ export async function updateLog(
                                         email,
                                         Provider: breakPoint.providers[index],
                                         status: breakPoint.statuses[index],
+                                        mxProvider: breakPoint.mxProviders[index],
+                                        mxRecord: breakPoint.mxRecords[index]
                                     }))
                                 }
                             }
