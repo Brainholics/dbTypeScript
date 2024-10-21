@@ -119,7 +119,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
         }
 
         if (log.InProgress) {
-            res.status(200).json({ message: "In progress" });
+            res.status(200).json({ message: "In progress" ,log: log});
             return;
         }
 

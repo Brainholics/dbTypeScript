@@ -125,7 +125,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
         }
 
         if (log.InProgress) {
-            res.status(200).json({ message: "In progress" });
+            res.status(200).json({ message: "In progress" ,log: log});
             return;
         }
 
