@@ -7,7 +7,7 @@ export async function createInvoice(
     quantity: number,
     unitCost: number,
     currency: string,
-    amountPaid: number
+    amountPaid: number,
 ): Promise<Buffer | null> {
     try {
         const invoiceNumber = "INV-" + Math.floor(Math.random() * 100000000000);

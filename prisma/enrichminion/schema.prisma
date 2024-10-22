@@ -64,6 +64,7 @@ model BillingDetails {
   userID      String
   Url         String
   ServiceName String
+  CreditsRequested Int
   date        DateTime
   user        User     @relation(fields: [userID], references: [UserID])
 }

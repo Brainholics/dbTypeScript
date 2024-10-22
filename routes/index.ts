@@ -17,6 +17,7 @@ import minionLabsVerifyEmailLogs from "./minionlabs/verifyEmailLogs";
 import minionLabsServices from "./minionlabs/services";
 import minionLabsVerifyEmailAPI from "./minionlabs/verifyEmaillapi";
 import minionLabsBilling from "./minionlabs/billing";
+import minionLabsEnrichminionAPI from "./minionlabs/enrichapi";
 
 const app = express.Router();
 
@@ -33,6 +34,7 @@ app.use("/minionlabs/verifyEmail/logs",minionLabsVerifyEmailLogs);
 app.use("/minionlabs/verifyEmail/v1",minionLabsVerifyEmailAPI);
 app.use("/minionlabs/services",minionLabsServices);
 app.use("/minionlabs/billing",minionLabsBilling);
+app.use("/minionlabs/enrichminion/v1",minionLabsEnrichminionAPI)
 
 // Podcast routes
 app.use('/podcast/user', podcastUserRoutes);

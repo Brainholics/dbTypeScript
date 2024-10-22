@@ -18,7 +18,7 @@ app.post("/createInvoice", userAuth, async (req, res) => {
             return;
         }
 
-        const {quantity,unitCost,currency,amountPaid,from} = req.body;
+        const {quantity,unitCost,currency,amountPaid,from,creditsRequested} = req.body;
 
         // Create invoice here
         const invoiceData = await createInvoice(from,user.name,quantity,unitCost,currency,amountPaid);
@@ -44,7 +44,7 @@ app.post("/createInvoice", userAuth, async (req, res) => {
             return;
         }
 
-        const invoiceLog = await createInvoiceEntry(userID,uploadedInvoice.ETag.replace(/"/g,''),uploadedInvoice.Location,from)
+        const invoiceLog = await createInvoiceEntry(userID,uploadedInvoice.ETag.replace(/"/g,''),uploadedInvoice.Location,from, creditsRequested)
         if(!invoiceLog){
             res.status(500).json({ message: "Invoice not logged" });
             return;

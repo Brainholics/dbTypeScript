@@ -7,6 +7,7 @@ export async function createInvoiceEntry(
     billingID: string,
     url: string,
     serviceName: string,
+    creditsRequested: number
 ) {
     try {
         const invoice = await prisma.billingDetails.create({
@@ -15,6 +16,7 @@ export async function createInvoiceEntry(
                 userID: userID,
                 Url: url,
                 ServiceName: serviceName,
+                CreditsRequested: creditsRequested,
                 date: new Date(),
             }
         })
