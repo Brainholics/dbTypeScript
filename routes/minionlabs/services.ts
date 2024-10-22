@@ -429,7 +429,7 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
         formData.append('mappedOptions', mappedOptions);
 
         // Send the fetch request
-        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
+        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetEmailResponse', formData, {
             headers: {
                 ...formData.getHeaders(),
             },
@@ -559,7 +559,7 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         formData.append('mappedOptions', mappedOptions);
 
         // Send the fetch request
-        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
+        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetBothResponse', formData, {
             headers: {
                 ...formData.getHeaders(),
             },
