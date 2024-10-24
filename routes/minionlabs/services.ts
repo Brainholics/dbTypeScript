@@ -140,7 +140,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         // Function to poll SMTP response status
         const checkSMTPStatus = async (): Promise<SMTPStatus | null> => {
-            const maxRetries = 60; // 5 hours
+            const maxRetries = 60; // Retry for up to 5 minutes (5 seconds * 60 retries)
             let retries = 0;
             let statusData: SMTPStatus | null = null;
 
@@ -175,20 +175,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
 
         // Call the polling function
         const statusData = await checkSMTPStatus();
-        if (!statusData){
-            const updatedLog = await updateLog(logID, "1", ({
-                apicode: 1,
-                emails: [],
-                providers: [],
-                statuses: [],
-                mxRecords: [],
-                mxProviders: []
-            } as BreakPoint))
-            if (!updatedLog) {
-                res.status(400).json({ message: "Failed to update log at First server failure" });
-                return;
-            }
-        }
+        if (!statusData) return;
 
         const updateProgressLog = await changeProgressStatus(logID, true);
         if (!updateProgressLog) {
@@ -196,7 +183,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             return;
         }
 
-        if (!statusData || !statusData.emails) {
+        if (!statusData.emails) {
             res.status(500).json({ message: "No emails found in first SMTP server" });
             return;
         }
@@ -211,7 +198,6 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             } else if (email.result === "deliverable") {
                 validEmails.push(email);
             } else {
-                // console.log({"Invalid Email": email.result});
                 invalidEmails.push(email);
             }
         }
@@ -248,8 +234,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             }
 
             const data = await response.json() as SECONDAPIResponse;
-
-            if (data['EMAIL-status'] === "valid") {
+            if (data.emailStatus === "valid") {
                 if (email.result === "catch_all" || email.result === "risky") {
                     catchAllValidEmails.push(email);
                 }
@@ -291,8 +276,7 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             }
 
             const data = await response.json() as SECONDAPIResponse;
-
-            if (data['EMAIL-status'] === "valid") {
+            if (data.emailStatus === "valid") {
                 if (email.result === "catch_all" || email.result === "risky") {
                     catchAllValidEmails.push(email);
                 }
@@ -305,7 +289,10 @@ app.post("/checkStatus", verifySessionToken, async (req: Request, res: Response)
             }
         }
 
-        const Location = updateProgressLog.url;
+        let Location = updateProgressLog.url;
+        if (Location?.startsWith("http://")) {
+            Location = Location.replace("http://", "https://");
+        }
 
         const uploadedJson = await fetch(Location as string);
         if (!uploadedJson.ok) {
@@ -460,7 +447,15 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string, uploadS3?.Location as string);
+        let enrichOutputLocation = outputEnriched?.Location as string;
+        if (enrichOutputLocation?.startsWith("http://")) {
+            enrichOutputLocation = enrichOutputLocation.replace("http://", "https://");
+        }
+        let uploadS3Location = uploadS3?.Location as string;
+        if (uploadS3Location?.startsWith("http://")) {
+            uploadS3Location = uploadS3Location.replace("http://", "https://");
+        }
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, enrichOutputLocation, uploadS3Location);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -525,7 +520,15 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string, uploadS3?.Location as string);
+        let enrichOutputLocation = outputEnriched?.Location as string;
+        if (enrichOutputLocation?.startsWith("http://")) {
+            enrichOutputLocation = enrichOutputLocation.replace("http://", "https://");
+        }
+        let uploadS3Location = uploadS3?.Location as string;
+        if (uploadS3Location?.startsWith("http://")) {
+            uploadS3Location = uploadS3Location.replace("http://", "https://");
+        }
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, enrichOutputLocation, uploadS3Location);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -590,7 +593,15 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
         const logID = v4();
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, outputEnriched?.Location as string, uploadS3?.Location as string);
+        let enrichOutputLocation = outputEnriched?.Location as string;
+        if (enrichOutputLocation?.startsWith("http://")) {
+            enrichOutputLocation = enrichOutputLocation.replace("http://", "https://");
+        }
+        let uploadS3Location = uploadS3?.Location as string;
+        if (uploadS3Location?.startsWith("http://")) {
+            uploadS3Location = uploadS3Location.replace("http://", "https://");
+        }
+        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, enrichOutputLocation, uploadS3Location);
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;

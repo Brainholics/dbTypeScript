@@ -192,7 +192,6 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             } else if (email.result === "deliverable") {
                 validEmails.push(email);
             } else {
-                // console.log({"Invalid Email": email.result});
                 invalidEmails.push(email);
             }
         }
@@ -229,8 +228,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             }
 
             const data = await response.json() as SECONDAPIResponse;
-
-            if (data['EMAIL-status'] === "valid") {
+            if (data.emailStatus === "valid") {
                 if (email.result === "catch_all" || email.result === "risky") {
                     catchAllValidEmails.push(email);
                 }
@@ -272,8 +270,7 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             }
 
             const data = await response.json() as SECONDAPIResponse;
-
-            if (data['EMAIL-status'] === "valid") {
+            if (data.emailStatus === "valid") {
                 if (email.result === "catch_all" || email.result === "risky") {
                     catchAllValidEmails.push(email);
                 }
@@ -286,7 +283,10 @@ app.post("/checkStatus", verifyAuthToken, async (req: Request, res: Response): P
             }
         }
 
-        const Location = updateProgressLog.url;
+        let Location = updateProgressLog.url;
+        if (Location?.startsWith("http://")) {
+            Location = Location.replace("http://", "https://");
+        }
 
         const uploadedJson = await fetch(Location as string);
         if (!uploadedJson.ok) {

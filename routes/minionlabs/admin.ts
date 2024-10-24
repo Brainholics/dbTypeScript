@@ -700,8 +700,12 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
             }
 
             const data = await response.json() as SECONDAPIResponse;
+            console.log("===============================================");
 
-            if (data['EMAIL-status'] === "valid") {
+            console.log({ data: data });
+
+            console.log("===============================================");
+            if (data.emailStatus === "valid") {
                 if (email.result === "catch_all" || email.result === "risky") {
                     catchAllValidEmails.push(email);
                 }
@@ -744,7 +748,11 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
 
             const data = await response.json() as SECONDAPIResponse;
 
-            if (data['EMAIL-status'] === "valid") {
+            console.log("===============================================");
+            console.log({ "google data": data });
+            console.log("===============================================");
+
+            if (data.emailStatus === "valid") {
                 if (email.result === "catch_all" || email.result === "risky") {
                     catchAllValidEmails.push(email);
                 }
@@ -894,7 +902,7 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
 
                 const data = await response.json() as SECONDAPIResponse;
 
-                if (data['EMAIL-status'] === "valid") {
+                if (data.emailStatus === "valid") {
                     if (email.Provider === "catch_all" || email.Provider === "``risky") {
                         catchAllValidEmails.push(email);
                     }
@@ -937,7 +945,7 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
 
                 const data = await response.json() as SECONDAPIResponse;
 
-                if (data['EMAIL-status'] === "valid") {
+                if (data.emailStatus === "valid") {
                     if (email.Provider === "catch_all" || email.Provider === "risky") {
                         catchAllValidEmails.push(email);
                     }
@@ -1066,7 +1074,7 @@ app.post("/runFrom3BreakPoint", adminVerification, async (req: Request, res: Res
 
             const data = await response.json() as SECONDAPIResponse;
 
-            if (data['EMAIL-status'] === "valid") {
+            if (data.emailStatus === "valid") {
                 if (emailData.Provider === "catch_all" || emailData.Provider === "risky") {
                     catchAllValidEmails.push(emailData);
                 }

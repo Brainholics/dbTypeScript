@@ -83,7 +83,7 @@ export interface SMTPStatus {
 }
 
 export interface SECONDAPIResponse {
-    "EMAIL-status": string;
+    emailStatus: string;
     Email: string;
 }
 
