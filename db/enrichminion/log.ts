@@ -12,7 +12,6 @@ export async function createLog(
     fileName: string,
     type: string,
     url: string,
-    uploadedFile : string
 ): Promise<Logs | null> {
     try {
         const log = await prisma.enrichmentLogs.create({
@@ -20,14 +19,37 @@ export async function createLog(
                 LogID:logID,
                 userID: userID,
                 creditsUsed: creditUsed,
-                status: "completed",
+                status: "pending",
                 fileName: fileName,
                 URL:url,
                 Type:type,
-                UploadedFile: uploadedFile,
                 Date: new Date(),
             }
         })
+
+        return log;
+    } catch (error: any) {
+        throw new Error(error.message);
+    }
+}
+
+export async function updateLog(
+    logID: string,
+    status: string,
+    uploadedURL: string,    
+    creditUsed: number,
+): Promise<Logs | null> {
+    try {
+        const log = await prisma.enrichmentLogs.update({
+            where: {
+                LogID: logID
+            },
+            data: {
+                status: status,
+                UploadedFile: uploadedURL,
+                creditsUsed: creditUsed
+            }
+        });
 
         return log;
     } catch (error: any) {

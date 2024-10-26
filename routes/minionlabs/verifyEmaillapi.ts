@@ -8,6 +8,7 @@ import s3 from "../../db/verifyEmail/s3";
 import verifyAuthToken from "../../middleware/enrichminion/apiAuth";
 import { BreakPoint, Email, SECONDAPIResponse, SMTPResponse, SMTPStatus } from '../../types/interfaces';
 import { extractEmails } from '../../utils/extractEmails';
+import { v4 } from 'uuid';
 dotenv.config();
 
 
@@ -27,10 +28,9 @@ app.post("/executeFileJsonInput", verifyAuthToken, upload.single("json"), async 
         const file = req.file;
         const fileData = JSON.parse(file.buffer.toString('utf-8'));
         const emails = fileData.emails;
-
         const emailsCount = emails.length;
         const creditsUsed = emailsCount * parseInt(process.env.VerifyCost as string);
-        // deduct credits 
+        // // deduct credits 
         const credits = await removeCredits(creditsUsed, userID);
         if (!credits) {
             res.status(400).json({ message: "Insufficient credits" });
@@ -39,6 +39,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, upload.single("json"), async 
         const currentTime = new Date().getTime();
 
         const JSONData = JSON.stringify(fileData, null, 2);
+        console.log(JSONData);
         // file upload to s3
         const fileName = `${userID}-${email}-${currentTime}.json`;
         const inputParams = {
@@ -62,8 +63,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, upload.single("json"), async 
         })
 
         if (!response.ok) {
-            res.status(400).json({ message: "Failed to send emails to SMTP server" });
-            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
+            const log = await createLog(v4(), userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
             if (!log) {
                 res.status(400).json({ message: "Failed to create log" });
                 return;
@@ -81,6 +81,7 @@ app.post("/executeFileJsonInput", verifyAuthToken, upload.single("json"), async 
                 res.status(400).json({ message: "Failed to update log at First server failure" });
                 return;
             }
+            res.status(400).json({ message: "Failed to send emails to SMTP server" });
             return;
         }
 

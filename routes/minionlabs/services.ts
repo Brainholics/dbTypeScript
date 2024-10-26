@@ -6,7 +6,7 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, stat, writeFile 
 import multer from "multer";
 import { Readable } from 'stream';
 import { v4 } from 'uuid';
-import { createLog as EnrichLog } from '../../db/enrichminion/log';
+import { createLog as EnrichLog, updateLog as EnrichUpdateLog , deleteLog as EnrichDeleteLog} from '../../db/enrichminion/log';
 import { addCredits, removeCredits } from "../../db/enrichminion/user";
 import { addJSONStringToLog, changeProgressStatus, createLog, generateAPIkey, getApiKey, getOneLog, revokeAPIkey, updateLog } from "../../db/verifyEmail/log";
 import s3 from "../../db/verifyEmail/s3";
@@ -15,6 +15,7 @@ import { BreakPoint, Email, ScanDbResponse, SECONDAPIResponse, SMTPResponse, SMT
 import { createCSV } from "../../utils/createcsvfromstringarr";
 import { extractEmails } from '../../utils/extractEmails';
 import { uploadToS3 } from '../../utils/uploadtoS3';
+import apiAuth from '../../middleware/enrichminion/apiAuth';
 dotenv.config();
 
 
@@ -69,8 +70,7 @@ app.post("/executeFileJsonInput", verifySessionToken, upload.single("json"), asy
         })
 
         if (!response.ok) {
-            res.status(400).json({ message: "Failed to send emails to SMTP server" });
-            const log = await createLog("0", userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
+            const log = await createLog(v4(), userID, fileName, creditsUsed, emailsCount, false, uploadResult.Location);
             if (!log) {
                 res.status(400).json({ message: "Failed to create log" });
                 return;
@@ -79,15 +79,16 @@ app.post("/executeFileJsonInput", verifySessionToken, upload.single("json"), asy
             const updatedLog = await updateLog(log.LogID, "1", ({
                 apicode: 1,
                 emails: emails,
-                providers: [],
-                statuses: [],
-                mxRecords: [],
-                mxProviders: []
+                providers: [""],
+                statuses: [""],
+                mxRecords: [""],
+                mxProviders: [""]
             } as BreakPoint));
             if (!updatedLog) {
                 res.status(400).json({ message: "Failed to update log at First server failure" });
                 return;
             }
+            res.status(400).json({ message: "Failed to send emails to SMTP server" });
             return;
         }
 
@@ -389,8 +390,8 @@ app.post("/revokeAPIkey", verifySessionToken, async (req: Request, res: Response
     }
 });
 
-app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (req: Request, res: Response) => {
-    const userID = (req as any).user.id;
+app.post('/GetEmailResponse', apiAuth, upload.single('csv'), async (req: Request, res: Response) => {
+    const userID = (req as any).user.UserID;
     const startingTime = new Date().getTime();
 
     try {
@@ -409,6 +410,17 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
         const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
 
+        const logID = v4();
+        let uploadS3Location = uploadS3?.Location as string;
+        if (uploadS3Location?.startsWith("http://")) {
+            uploadS3Location = uploadS3Location.replace("http://", "https://");
+        }
+
+        const newLog = await EnrichLog(logID,userID,parseInt(creditsDeducted,10),file.originalname,type,uploadS3Location) 
+        if (!newLog) {
+            return res.status(500).json({ error: "Failed to create log" });
+        }
+
         const formData = new FormData()
         formData.append('csv', file.buffer, file.originalname);  // Use file.buffer directly
         formData.append('discordUsername', discordUsername);
@@ -416,20 +428,34 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
         formData.append('mappedOptions', mappedOptions);
 
         // Send the fetch request
-        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetEmailResponse', formData, {
-            headers: {
-                ...formData.getHeaders(),
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-        });
-        // Check if the request was successful
-        if (response.status !== 200) {
-            console.error('Failed to send request to Enrich backend');
-            return res.status(500).json({ error: "Failed to send request to Enrich backend" });
+        let response;
+        try {
+            response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetEmailResponse', formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+            });
+            // Check if the request was successful
+            if (response.status !== 200) {
+                console.log('Failed to send request to Enrich backend');
+                console.error('Failed to send request to Enrich backend');
+                return res.status(500).json({ error: "Failed to send request to Enrich backend" });
+            }
+        } catch (error) {
+            const log = await EnrichDeleteLog(logID);
+            if (!log) {
+                res.status(500).json({ error: "Failed to delete log" });
+                return;
+            }
+            return res.status(500).json({ error: "Failed to get Data from enrich server log deleted " });            
         }
 
-        // Parse the response from the external API
+        if (!response) {
+            res.status(500).json({ error: "Failed to send request to Enrich backend" });
+            return;
+        }
         const data = await response.data as ScanDbResponse;
         const creditCost = process.env.EnrichCost as unknown as number;
         let creditsUsed = data.totalEnriched * creditCost
@@ -441,26 +467,24 @@ app.post('/GetEmailResponse', verifySessionToken, upload.single('csv'), async (r
                 return;
             }
         }
+
         const fileName = `${email}-${startingTime}-Enriched-Emails.csv`;
         const filepath = createCSV(data.data as string[][], fileName);
         const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString() : "File not found";
+
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
-        const logID = v4();
+
         let enrichOutputLocation = outputEnriched?.Location as string;
         if (enrichOutputLocation?.startsWith("http://")) {
             enrichOutputLocation = enrichOutputLocation.replace("http://", "https://");
         }
-        let uploadS3Location = uploadS3?.Location as string;
-        if (uploadS3Location?.startsWith("http://")) {
-            uploadS3Location = uploadS3Location.replace("http://", "https://");
-        }
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, enrichOutputLocation, uploadS3Location);
+        const log = await EnrichUpdateLog(logID,"completed",enrichOutputLocation,creditsUsed); 
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
         }
-        res.status(200).json({ data });
+        res.status(200).json({ log });
     } catch (err: any) {
         const totalTime = (new Date().getTime() - startingTime) / 1000;
         res.status(500).json({ error: err.message, "total time": `${totalTime} seconds` });
@@ -471,16 +495,31 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
     const userID = (req as any).user.id;
     const startingTime = new Date().getTime();
     try {
+        // Check if the file is uploaded
         if (!req.file) {
-            res.status(400).json({ error: "No file uploaded" });
-            return;
+            return res.status(400).json({ error: "No file uploaded" });
         }
+
         const file = req.file;
         const csvFileString = file.buffer.toString('utf-8');
 
+        // Upload the file to S3 (Assuming uploadToS3 function is correct)
         const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "public-read", "text/csv");
+
+        // Extract required fields from the request body
         const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
+
+        const logID = v4();
+        let uploadS3Location = uploadS3?.Location as string;
+        if (uploadS3Location?.startsWith("http://")) {
+            uploadS3Location = uploadS3Location.replace("http://", "https://");
+        }
+
+        const newLog = await EnrichLog(logID,userID,parseInt(creditsDeducted,10),file.originalname,type,uploadS3Location) 
+        if (!newLog) {
+            return res.status(500).json({ error: "Failed to create log" });
+        }
 
         const formData = new FormData()
         formData.append('csv', file.buffer, file.originalname);  // Use file.buffer directly
@@ -489,20 +528,34 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
         formData.append('mappedOptions', mappedOptions);
 
         // Send the fetch request
-        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
-            headers: {
-                ...formData.getHeaders(),
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-        });
-        // Check if the request was successful
-        if (response.status !== 200) {
-            console.error('Failed to send request to Enrich backend');
-            return res.status(500).json({ error: "Failed to send request to Enrich backend" });
+        let response;
+        try {
+            response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetPhoneNumberResponse', formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+            });
+            // Check if the request was successful
+            if (response.status !== 200) {
+                console.log('Failed to send request to Enrich backend');
+                console.error('Failed to send request to Enrich backend');
+                return res.status(500).json({ error: "Failed to send request to Enrich backend" });
+            }
+        } catch (error) {
+            const log = await EnrichDeleteLog(logID);
+            if (!log) {
+                res.status(500).json({ error: "Failed to delete log" });
+                return;
+            }
+            return res.status(500).json({ error: "Failed to get Data from enrich server log deleted " });            
         }
 
-        // Parse the response from the external API
+        if (!response) {
+            res.status(500).json({ error: "Failed to send request to Enrich backend" });
+            return;
+        }
         const data = await response.data as ScanDbResponse;
         const creditCost = process.env.EnrichCost as unknown as number;
         let creditsUsed = data.totalEnriched * creditCost
@@ -514,21 +567,19 @@ app.post('/GetPhoneNumberResponse', verifySessionToken, upload.single('csv'), as
                 return;
             }
         }
-        const fileName = `${userID}-${email}-${startingTime}-Enriched-PhoneNumber.csv`;
+
+        const fileName = `${email}-${startingTime}-Enriched-Emails.csv`;
         const filepath = createCSV(data.data as string[][], fileName);
         const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString() : "File not found";
+
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
-        const logID = v4();
+
         let enrichOutputLocation = outputEnriched?.Location as string;
         if (enrichOutputLocation?.startsWith("http://")) {
             enrichOutputLocation = enrichOutputLocation.replace("http://", "https://");
         }
-        let uploadS3Location = uploadS3?.Location as string;
-        if (uploadS3Location?.startsWith("http://")) {
-            uploadS3Location = uploadS3Location.replace("http://", "https://");
-        }
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, enrichOutputLocation, uploadS3Location);
+        const log = await EnrichUpdateLog(logID,"completed",enrichOutputLocation,creditsUsed); 
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;
@@ -544,16 +595,31 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
     const userID = (req as any).user.id;
     const startingTime = new Date().getTime();
     try {
+        // Check if the file is uploaded
         if (!req.file) {
-            res.status(400).json({ error: "No file uploaded" });
-            return;
+            return res.status(400).json({ error: "No file uploaded" });
         }
+
         const file = req.file;
         const csvFileString = file.buffer.toString('utf-8');
 
+        // Upload the file to S3 (Assuming uploadToS3 function is correct)
         const uploadS3 = await uploadToS3('verify', file.originalname, csvFileString, "public-read", "text/csv");
+
+        // Extract required fields from the request body
         const { discordUsername, email, mappedOptions, creditsDeducted, type } = req.body;
 
+
+        const logID = v4();
+        let uploadS3Location = uploadS3?.Location as string;
+        if (uploadS3Location?.startsWith("http://")) {
+            uploadS3Location = uploadS3Location.replace("http://", "https://");
+        }
+
+        const newLog = await EnrichLog(logID,userID,parseInt(creditsDeducted,10),file.originalname,type,uploadS3Location) 
+        if (!newLog) {
+            return res.status(500).json({ error: "Failed to create log" });
+        }
 
         const formData = new FormData()
         formData.append('csv', file.buffer, file.originalname);  // Use file.buffer directly
@@ -562,20 +628,34 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
         formData.append('mappedOptions', mappedOptions);
 
         // Send the fetch request
-        const response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetBothResponse', formData, {
-            headers: {
-                ...formData.getHeaders(),
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-        });
-        // Check if the request was successful
-        if (response.status !== 200) {
-            console.error('Failed to send request to Enrich backend');
-            return res.status(500).json({ error: "Failed to send request to Enrich backend" });
+        let response;
+        try {
+            response = await axios.post('https://enrichbackend.dealsinfo.store/api/GetBothResponse', formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+            });
+            // Check if the request was successful
+            if (response.status !== 200) {
+                console.log('Failed to send request to Enrich backend');
+                console.error('Failed to send request to Enrich backend');
+                return res.status(500).json({ error: "Failed to send request to Enrich backend" });
+            }
+        } catch (error) {
+            const log = await EnrichDeleteLog(logID);
+            if (!log) {
+                res.status(500).json({ error: "Failed to delete log" });
+                return;
+            }
+            return res.status(500).json({ error: "Failed to get Data from enrich server log deleted " });            
         }
 
-        // Parse the response from the external API
+        if (!response) {
+            res.status(500).json({ error: "Failed to send request to Enrich backend" });
+            return;
+        }
         const data = await response.data as ScanDbResponse;
         const creditCost = process.env.EnrichCost as unknown as number;
         let creditsUsed = data.totalEnriched * creditCost
@@ -587,21 +667,19 @@ app.post('/GetBothResponse', verifySessionToken, upload.single('csv'), async (re
                 return;
             }
         }
-        const fileName = `${userID}-${email}-${startingTime}-Enriched-Both.csv`;
+
+        const fileName = `${email}-${startingTime}-Enriched-Emails.csv`;
         const filepath = createCSV(data.data as string[][], fileName);
         const fileContent = existsSync(filepath) ? await readFileSync(filepath).toString() : "File not found";
+
         // console.log(fileContent)
         const outputEnriched = await uploadToS3('enrich-output', fileName, fileContent, "public-read", "text/csv");
-        const logID = v4();
+
         let enrichOutputLocation = outputEnriched?.Location as string;
         if (enrichOutputLocation?.startsWith("http://")) {
             enrichOutputLocation = enrichOutputLocation.replace("http://", "https://");
         }
-        let uploadS3Location = uploadS3?.Location as string;
-        if (uploadS3Location?.startsWith("http://")) {
-            uploadS3Location = uploadS3Location.replace("http://", "https://");
-        }
-        const log = await EnrichLog(logID, userID, creditsUsed, fileName, type, enrichOutputLocation, uploadS3Location);
+        const log = await EnrichUpdateLog(logID,"completed",enrichOutputLocation,creditsUsed); 
         if (!log) {
             res.status(500).json({ error: "Failed to create log" });
             return;

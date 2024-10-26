@@ -10,11 +10,12 @@ datasource db {
 }
 
 model Email {
-  Provider   String
-  email      String       @id
-  status     String
-  mxRecord   String
-  mxProvider String
+  Provider   String?
+  email      String       
+  status     String?
+  mxRecord   String?
+  mxProvider String?
+  EntryID   String      @id @default(cuid())
   BreakPoint BreakPoint @relation(fields: [BreakPointBreakPointID], references: [BreakPointID])
 BreakPointBreakPointID String
 }

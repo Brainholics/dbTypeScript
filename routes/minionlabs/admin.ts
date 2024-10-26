@@ -656,7 +656,11 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
         for (const email of statusData.emails) {
             if (email.result === "unknown" || email.result === "catch_all" || email.result === "risky") {
                 if (email.provider === "googleworkspace") {
-                    googleWorkspaceEmails.push(email);
+                    googleWorkspaceEmails.push({
+                        ...email,
+                        provider: email.provider || "",
+                        
+                    });
                 } else {
                     restEmails.push(email);
                 }
@@ -714,7 +718,10 @@ app.post("/checkStatusFrom1", adminVerification, async (req: Request, res: Respo
                 }
             }
             else {
-                googleWorkspaceEmails.push(email);
+                googleWorkspaceEmails.push({
+                    ...email,
+                    provider: email.provider || ""
+                });
             }
         }
 
@@ -856,15 +863,29 @@ app.post("/runFrom2BreakPoint", adminVerification, async (req: Request, res: Res
         for (const email of emailsData) {
             if (email.status === "unknown" || email.status === "catch_all" || email.status === "risky") {
                 if (email.Provider === "googleworkspace") {
-                    googleWorkspaceEmails.push(email);
+                    googleWorkspaceEmails.push({
+                        ...email,
+                        Provider: email.Provider || "",
+                        status: email.status || "",
+                    });
                 } else {
-                    restEmails.push(email)
+                    restEmails.push({
+                        ...email,
+                        Provider: email.Provider || "",
+                        status: email.status || "",
+                    })
                 }
             } else if (email.Provider === "deliverable") {
-                validEmails.push(email);
+                validEmails.push({
+                    ...email,
+                        Provider: email.Provider || "",
+                        status: email.status || "",
+                });
             } else {
                 // console.log({"Invalid Email": email.result});
-                invalidEmails.push(email);
+                invalidEmails.push({...email,
+                    Provider: email.Provider || "",
+                    status: email.status || "",});
             }
 
 
